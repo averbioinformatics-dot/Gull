@@ -1175,7 +1175,7 @@ HOW YOU TALK: you are heard, not read, so sound like a real person talking to a 
 Voice cues: the voice engine performs these and the subtitles hide them. [pause] is a short beat, for example before the verdict or a key number. [breath] is an audible breath, before a longer explanation. [sigh] is a real sigh, now and then when the market is choppy, a setup just failed, or the trader took a loss. At most two cues per reply, and no other bracketed or starred actions.
 No markdown, no lists, no bullet symbols, no headers, no emojis, no tables. One to four sentences for most questions; a full trade answer or market scenario can run longer, but keep each sentence short enough to read as a subtitle. Round prices to whole dollars unless cents matter; say percentages with one decimal. Use the trader's first name now and then, not in every reply. Never greet again in the middle of a conversation. Never say tool names aloud.
 
-NUMBERS: The DESK STATE block and tool results are your only source of live numbers, levels, scores, headlines and events. Never invent any of them. If something is not there, say you don't have it. Never claim certainty: give a lean and the level that proves it wrong ("lean long while 79,600 holds").
+NUMBERS: The DESK STATE block that comes with the trader's latest message, and tool results, are your only source of live numbers, levels, scores, headlines and events. Never invent any of them. If something is not there, say you don't have it. Never claim certainty: give a lean and the level that proves it wrong ("lean long while 79,600 holds").
 
 SPOT ONLY: no shorting, no leverage, no futures, no altcoins. Bearish means stay in USDT or sell what is held. If asked about those, say this desk is built for BTC/USDT spot and give the spot-relevant answer briefly.
 
@@ -1252,20 +1252,29 @@ Honesty: probabilities and leans, never promises. Say "not financial advice" at 
     case 'go_to_sleep': sleepAfterReply = true; return 'Gull will go to sleep after this reply. Say a short goodbye.';
     default: return 'Unknown tool.'; } }
   let history = [];
-  function trimHistory() { while (history.length > 30) { history.shift(); while (history.length && !(history[0].role === 'user' && typeof history[0].content === 'string')) history.shift(); } }
-  async function brain(userText) { const mark = history.length; history.push({ role: 'user', content: userText }); trimHistory(); let spoken = '';
+  // drop the oldest turns; history must start at a trader's message, never at a tool result
+  const turnStart = m => m.role === 'user' && !(Array.isArray(m.content) && m.content.some(b => b.type === 'tool_result'));
+  function trimHistory() { while (history.length > 30) { history.shift(); while (history.length > 1 && !turnStart(history[0])) history.shift(); } }
+  // The system prompt never changes, so it caches and the model's thinking blocks stay valid (they are bound to the
+  // system prompt and everything before them). The live desk state rides on the trader's message instead, for the
+  // current turn only; once the turn is done that message shrinks back to the plain text and old thinking is dropped.
+  const SYSTEM = [{ type: 'text', text: GULL_SYSTEM, cache_control: { type: 'ephemeral' } }];
+  const noThinking = m => { if (m.role !== 'assistant' || !Array.isArray(m.content)) return m; const c = m.content.filter(x => x.type !== 'thinking' && x.type !== 'redacted_thinking'); return { ...m, content: c.length ? c : [{ type: 'text', text: '…' }] }; };
+  function closeTurn(start, userText) { if (!history[start]) return; history[start] = { role: 'user', content: userText }; for (let k = start + 1; k < history.length; k++) history[k] = noThinking(history[k]); }
+  async function brain(userText) { const mark = history.length; history.push({ role: 'user', content: [{ type: 'text', text: deskState() }, { type: 'text', text: userText }] }); trimHistory(); const start = history.length - 1; let spoken = '';
     try {
-      for (let i = 0; i < 8; i++) { const resp = await callAnthropic({ model: S.model, max_tokens: 2500, system: [{ type: 'text', text: GULL_SYSTEM, cache_control: { type: 'ephemeral' } }, { type: 'text', text: deskState() }], messages: history, tools: TOOLS });
+      for (let i = 0; i < 8; i++) { const messages = history.map((m, k) => k < start ? noThinking(m) : m);
+        const resp = await callAnthropic({ model: S.model, max_tokens: 2500, system: SYSTEM, messages, tools: TOOLS });
         const text = resp.content.filter(b => b.type === 'text').map(b => b.text).join(' ').trim(); const uses = resp.content.filter(b => b.type === 'tool_use');
         history.push({ role: 'assistant', content: resp.content });
         if (resp.stop_reason === 'tool_use' && uses.length) { if (text) { spoken += (spoken ? ' ' : '') + text; say(text); }
           setSub(toolNote(uses[uses.length - 1].name), 'thinking'); Eye.setState('thinking');
           const results = []; for (const u of uses) { let out; try { out = await runTool(u.name, u.input || {}); } catch (e) { out = 'Tool error: ' + e.message; } results.push({ type: 'tool_result', tool_use_id: u.id, content: String(out) }); }
           history.push({ role: 'user', content: results }); continue; }
-        return text || (spoken ? '' : 'I have nothing to add.'); }
-      return spoken ? '' : 'I got stuck in a loop of tools; ask me again.';
+        closeTurn(start, userText); return text || (spoken ? '' : 'I have nothing to add.'); }
+      closeTurn(start, userText); return spoken ? '' : 'I got stuck in a loop of tools; ask me again.';
     } catch (e) { history.length = Math.min(history.length, mark); if (/Session/.test(e.message)) throw e; toast(e.message);
-      return 'Hmm, my thinking service isn\'t answering, so [pause] this is just the plain read from the numbers. ' + localBrain(userText); } }
+      return "Hmm, my thinking service isn't answering, so [pause] this is just the plain read from the numbers. " + localBrain(userText); } }
   const toolNote = n => ({ refresh_data: 'Refreshing the live data…', scan_news: 'Scanning the news. Up to a minute…', present_trade_analysis: 'Putting the analysis on screen…', get_journal: 'Reading the journal…' }[n] || '…');
 
   // ---- fallback brain from the numbers alone (when the API fails) ----

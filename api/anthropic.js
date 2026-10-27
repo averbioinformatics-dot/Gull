@@ -8,8 +8,12 @@ const MAX_TOKENS_CAP = 4000;
 
 export default async function handler(req, res) {
   if (!requireSession(req, res)) return;
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = (process.env.ANTHROPIC_API_KEY || '').trim();
   if (!apiKey) return res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY in its environment variables.' });
+  // a key is one token; anything else (pasted chat text, two lines, quotes) is rejected here, without ever echoing it back
+  if (!/^sk-ant-api\d*-[\w-]+$/.test(apiKey)) {
+    return res.status(500).json({ error: 'ANTHROPIC_API_KEY in Vercel is not a valid API key. It must be just the key on one line, starting with "sk-ant-api03-" (create one at console.anthropic.com → API Keys), then redeploy.' });
+  }
 
   if (req.method === 'GET') return res.status(200).json({ ok: true });
   if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST.' });
@@ -34,6 +38,6 @@ export default async function handler(req, res) {
     res.setHeader('cache-control', 'no-store');
     return res.send(text);
   } catch (e) {
-    return res.status(502).json({ error: 'Could not reach Anthropic: ' + e.message });
+    return res.status(502).json({ error: 'Could not reach Anthropic: ' + String(e.message).split(apiKey).join('[key hidden]') });
   }
 }

@@ -351,7 +351,7 @@ td.num,th.num{text-align:right;font-family:var(--font-mono);font-variant-numeric
           <h3>Waking her</h3>
           <p>Gull sleeps with one ear open. Say <q>wakey wakey Gull</q>, <q>hey, I'm home</q> or <q>hey, I'm back</q> and she opens her eye and greets you. You can tap the eye too. Add your question in the same breath (<q>I'm back, what's the market doing?</q>) and she answers it straight after the greeting.</p>
           <h3>Talking to her</h3>
-          <p>Once she's awake she keeps listening; just speak. What she says appears as subtitles under the eye. Try <q>what's going on in the market</q>, <q>what's the top news and how does it affect us</q>, <q>should I trade right now</q>, <q>show me the 4 hour chart</q>, <q>log this trade</q>, <q>how's my journal</q>, <q>what would change your mind</q>, or ask her anything about spot trading: order types, OCO, position sizing, RSI, sessions, CPI days.</p>
+          <p>Once she's awake she keeps listening; just speak. What she says appears as subtitles under the eye. You can talk over her: she stops mid-sentence and listens (a bare <q>hold on</q> or <q>wait</q> just stops her). Headphones make this work best. Try <q>what's going on in the market</q>, <q>what's the top news and how does it affect us</q>, <q>should I trade right now</q>, <q>show me the 4 hour chart</q>, <q>log this trade</q>, <q>how's my journal</q>, <q>what would change your mind</q>, or ask her anything about spot trading: order types, OCO, position sizing, RSI, sessions, CPI days.</p>
           <p>When she shows you something, the eye moves to the left and the panel opens on the right. Say <q>close it</q> or press Esc to bring her back full screen. Say <q>goodnight Gull</q> or <q>that's all</q> to put her to sleep; she also dozes off by herself after a few quiet minutes (Settings).</p>
           <h3>Before any trade</h3>
           <p>She refreshes the live data, makes sure the news scan is less than an hour old, then studies the past (daily trend, 7/30/90-day moves, where price sits in its 300-day range, structure), the present (4-hour momentum, 15-minute trigger, volume, the order book, Fear &amp; Greed, which session it is) and what's likely next (bull, base and bear scenarios with odds, the expected 24-hour range, the events ahead). The Analysis panel shows the case with the exact entry, stop, two targets, reward/risk, position size, the dollars you lose at the stop, and how to place it on Binance as a buy plus an OCO.</p>
@@ -387,6 +387,7 @@ td.num,th.num{text-align:right;font-family:var(--font-mono);font-variant-numeric
   <div class="field"><label class="row" style="gap:6px"><input type="checkbox" id="briefViaApi">After the greeting, read a full market briefing (uses the API)</label></div>
   <hr>
   <div class="field"><label class="row" style="gap:6px"><input type="checkbox" id="wakeWords">Wake on "wakey wakey Gull", "I'm home", "I'm back"</label></div>
+  <div class="field"><label class="row" style="gap:6px"><input type="checkbox" id="bargeIn">Let me interrupt her by talking (best with headphones)</label></div>
   <div class="field"><label for="autoSleep">Go back to sleep after this many quiet minutes (0 = never)</label><input type="number" id="autoSleep" min="0" max="120" step="1"></div>
   <div class="field"><label for="voiceEngine">Voice engine</label><select id="voiceEngine"><option value="natural">Natural: Kokoro neural voice (free, runs on this device; ~90–310 MB download once)</option><option value="browser">Browser voice (robotic, nothing to download)</option></select><span class="small" id="voiceInfo"></span></div>
   <div class="field" id="kVoiceField"><label for="kVoice">Natural voice</label><select id="kVoice">
@@ -681,7 +682,7 @@ const Eye = (() => {
     if (r.status === 401) { signOut('Your session ended. Sign in again.'); throw new Error('Session ended. Sign in again.'); } return r; }
 
   // ---- settings ----
-  const DEF = { model: 'claude-sonnet-5-5', maxSearches: 6, briefViaApi: false, voiceEngine: 'natural', kVoice: 'af_heart', voice: '', rate: 1.0, lang: 'en-US', voiceOn: true, micOn: true, wakeWords: true, autoSleepMin: 10, callMe: '', newsWeight: 50, newsMaxAgeH: 6, balance: 10, riskPct: 2, feePct: 0.1, minOrder: 5 };
+  const DEF = { model: 'claude-sonnet-5-5', maxSearches: 6, briefViaApi: false, voiceEngine: 'natural', kVoice: 'af_heart', bargeIn: true, voice: '', rate: 1.0, lang: 'en-US', voiceOn: true, micOn: true, wakeWords: true, autoSleepMin: 10, callMe: '', newsWeight: 50, newsMaxAgeH: 6, balance: 10, riskPct: 2, feePct: 0.1, minOrder: 5 };
   const S = Object.assign({}, DEF);
   // each signed-in person keeps their own settings, journal and analysis in this browser (and in Supabase); the news scan is shared
   const uid = () => (session.get() || {}).user || 'anon';
@@ -698,13 +699,13 @@ const Eye = (() => {
     async flush() { const items = Object.entries(this._q).map(([key, value]) => ({ key, value })); this._q = {}; if (!items.length || !session.get()) return; try { await api('/api/state', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ items }) }); } catch {} } };
   const persistSettings = () => { store.set(ukey('settings'), S); remote.save('settings', S); };
   function fillSettings() { $('#whoami').textContent = (session.get() || {}).name || uid(); $('#callMe').value = S.callMe;
-    $('#model').value = S.model; $('#maxSearches').value = S.maxSearches; $('#briefViaApi').checked = S.briefViaApi; $('#wakeWords').checked = S.wakeWords; $('#autoSleep').value = S.autoSleepMin; $('#voiceEngine').value = S.voiceEngine; $('#kVoice').value = S.kVoice; syncVoiceFields(); fillVoices(); $('#rate').value = S.rate; $('#rateVal').textContent = S.rate.toFixed(2); $('#lang').value = S.lang;
+    $('#model').value = S.model; $('#maxSearches').value = S.maxSearches; $('#briefViaApi').checked = S.briefViaApi; $('#wakeWords').checked = S.wakeWords; $('#bargeIn').checked = S.bargeIn; $('#autoSleep').value = S.autoSleepMin; $('#voiceEngine').value = S.voiceEngine; $('#kVoice').value = S.kVoice; syncVoiceFields(); fillVoices(); $('#rate').value = S.rate; $('#rateVal').textContent = S.rate.toFixed(2); $('#lang').value = S.lang;
     $('#newsWeight').value = S.newsWeight; $('#newsWeightVal').textContent = S.newsWeight; $('#newsMaxAge').value = S.newsMaxAgeH; $('#balance').value = S.balance; $('#riskPct').value = S.riskPct; $('#feePct').value = S.feePct; $('#minOrder').value = S.minOrder; }
   function openSettings(o) { $('#settings').dataset.open = o; $('#scrim').dataset.open = o; if (o) fillSettings(); }
   $('#settingsBtn').onclick = () => openSettings(true); $('#closeSettings').onclick = () => openSettings(false); $('#scrim').onclick = () => openSettings(false);
   $('#newsWeight').oninput = e => $('#newsWeightVal').textContent = e.target.value; $('#rate').oninput = e => $('#rateVal').textContent = (+e.target.value).toFixed(2);
   $('#saveSettings').onclick = () => { const oldLang = S.lang;
-    S.callMe = $('#callMe').value.trim(); S.model = $('#model').value; S.maxSearches = +$('#maxSearches').value || 6; S.briefViaApi = $('#briefViaApi').checked; S.wakeWords = $('#wakeWords').checked; S.autoSleepMin = Math.max(0, +$('#autoSleep').value || 0); S.voiceEngine = $('#voiceEngine').value; S.kVoice = $('#kVoice').value; S.voice = $('#voiceSel').value; S.rate = +$('#rate').value || 1; S.lang = $('#lang').value;
+    S.callMe = $('#callMe').value.trim(); S.model = $('#model').value; S.maxSearches = +$('#maxSearches').value || 6; S.briefViaApi = $('#briefViaApi').checked; S.wakeWords = $('#wakeWords').checked; S.bargeIn = $('#bargeIn').checked; S.autoSleepMin = Math.max(0, +$('#autoSleep').value || 0); S.voiceEngine = $('#voiceEngine').value; S.kVoice = $('#kVoice').value; S.voice = $('#voiceSel').value; S.rate = +$('#rate').value || 1; S.lang = $('#lang').value;
     S.newsWeight = +$('#newsWeight').value; S.newsMaxAgeH = +$('#newsMaxAge').value || 6; S.balance = +$('#balance').value || 10; S.riskPct = +$('#riskPct').value || 2; S.feePct = +$('#feePct').value || 0; S.minOrder = +$('#minOrder').value || 5;
     persistSettings(); openSettings(false); toast('Saved'); renderAll(); if (S.lang !== oldLang) Ears.restart(); if (mode === 'asleep') showSleepHint(); if (S.voiceEngine === 'natural') Natural.load(); };
   function syncVoiceFields() { const nat = $('#voiceEngine').value === 'natural'; $('#kVoiceField').hidden = !nat; $('#browserVoiceField').hidden = nat;
@@ -805,8 +806,8 @@ const Eye = (() => {
   // speaks one reply piece by piece; each piece is the subtitle while it is spoken. The natural voice makes the next
   // sentences while the current one plays. With the voice off, pieces advance at reading pace.
   function speak(text, voice) { return new Promise(async resolve => { const my = speakToken; const items = speechItems(text); if (!items.length) return resolve();
-      speaking = true; Ears.pause(); Eye.setState('speaking'); let ended = false;
-      const done = () => { if (ended) return; ended = true; cancelSpeak = null; speaking = false; if (Eye.state === 'speaking') Eye.setState(mode === 'asleep' ? 'asleep' : 'idle'); if (!busy) Ears.resume(); resolve(); };
+      speaking = true; hearOwn(text); if (!S.bargeIn) Ears.pause(); Eye.setState('speaking'); let ended = false;
+      const done = () => { if (ended) return; ended = true; cancelSpeak = null; speaking = false; ownDone(); if (Eye.state === 'speaking') Eye.setState(mode === 'asleep' ? 'asleep' : 'idle'); if (!busy) Ears.resume(); resolve(); };
       cancelSpeak = () => { stopAudio(); Natural.cancelAll(); if (synth) synth.cancel(); done(); };
       const live = () => !ended && my === speakToken;
       if (wantNatural() && !Natural.ready) { setSub('…', 'thinking'); await Promise.race([Natural.load(), wait(12000)]); }
@@ -865,12 +866,31 @@ const Eye = (() => {
   function showSleepHint() { if (mode !== 'asleep') return; setHeard('');
     const how = !Ears.supported ? 'This browser cannot listen. Tap the eye to wake Gull, then type.' : Ears.blocked ? 'The microphone is blocked. Allow it for this site, or tap the eye.' : !Ears.on ? 'The microphone is off. Tap the eye to wake Gull, or turn the mic on.' : !S.wakeWords ? 'Tap the eye to wake Gull.' : 'Say “wakey wakey Gull”, “hey, I’m home” or “hey, I’m back”. Or tap the eye.';
     setSub(how, 'hint'); }
+  // ---- talking over her ----
+  // While she speaks the mic stays open. What it hears is compared with what she is saying: her own voice coming back
+  // through the speakers is ignored; new words (or "stop", "wait", "hold on") cut her off so she listens.
+  const wordsOf = t => norm(stripCues(t)).replace(/(\d),(?=\d)/g, '$1').match(/[a-z0-9']+/g) || [];
+  let ownWords = new Set(), ownUntil = 0;
+  function hearOwn(text) { ownWords = new Set([...ownWords, ...wordsOf(text)]); ownUntil = Infinity; }
+  function ownDone() { ownUntil = Date.now() + 3000; }
+  const STOP_RE = /\b(?:stop|wait|hold on|hang on|one sec(?:ond)?|enough|quiet|shut up|excuse me|listen|gull)\b/;
+  function isInterruption(text) { if (Date.now() > ownUntil) ownWords = new Set();
+    const w = wordsOf(text); if (!w.length) return false; const novel = w.filter(x => !ownWords.has(x));
+    const stop = (text.toLowerCase().match(STOP_RE) || [])[0]; if (stop && !wordsOf(stop).every(x => ownWords.has(x))) return true;
+    return novel.length >= 2 && novel.length / w.length >= 0.4; }
+  let cutIn = false, cutTimer = null;
+  function cutHerOff(text) { cutIn = true; clearTimeout(cutTimer); cutTimer = setTimeout(() => { cutIn = false; }, 10000); stopSpeaking(); Eye.setState('listening'); setHeard(text, true); setSub('…', 'thinking'); lastActivity = Date.now(); }
   Ears.hear((alts, final) => {
     if (mode === 'asleep') { if (final && S.wakeWords) { const w = matchWake(alts); if (w) wakeUp(w.kind, w.rest); } return; }
-    if (busy || speaking) return;
+    const text = alts[0];
+    if (cutIn) { lastActivity = Date.now(); setHeard(text, !final); if (final) { cutIn = false; clearTimeout(cutTimer); send(text); } return; } // the rest of what you said after cutting in
+    if (speaking || (busy && replying)) { // she is talking
+      if (!S.bargeIn || !isInterruption(text)) return; // her own echo, or interrupting is off
+      cutHerOff(text); if (final) { cutIn = false; clearTimeout(cutTimer); send(text); } return; }
+    if (busy) return; // still thinking about the last question
     lastActivity = Date.now();
-    if (!final) { setHeard(alts[0], true); if (Eye.state === 'idle') Eye.setState('listening'); return; }
-    if (Eye.state === 'listening') Eye.setState('idle'); send(alts[0]); });
+    if (!final) { setHeard(text, true); if (Eye.state === 'idle') Eye.setState('listening'); return; }
+    cutIn = false; if (Eye.state === 'listening') Eye.setState('idle'); send(text); });
 
   const pick = a => a[Math.floor(Math.random() * a.length)];
   // the built-in lines (greeting, goodbye) are written the way she talks: small fillers, a breath, a beat
@@ -1295,14 +1315,14 @@ Honesty: probabilities and leans, never promises. Say "not financial advice" at 
     if (SLEEP_RE.test(t) && t.split(' ').length <= 6) return goSleep('asked').then(() => '');
     if (/^(?:please )?(?:close|hide|dismiss)(?: (?:it|that|this|the (?:chart|panel|screen|window|stage)|panel|chart|screen))?(?: please)?$|^(?:back to (?:you|full screen)|full screen|go back)$/.test(t)) { closeStage(); return Promise.resolve(pick(['Okay.', 'Sure.', 'Yep.'])); }
     const w = matchWake([t]); if (w && w.rest.split(' ').filter(Boolean).length < 2) return Promise.resolve(`Mm-hmm, I'm right here${callName() ? ', ' + callName() : ''}.`);
-    if (/^(?:stop|quiet|shut up|enough|never ?mind)$/.test(t)) return Promise.resolve('');
+    if (/^(?:(?:okay |ok |gull )?(?:stop|wait|hold on|hang on|one sec(?:ond)?|quiet|shut up|enough|never ?mind)(?: gull| please| a sec(?:ond)?)?)$/.test(t)) return Promise.resolve(''); // she just stops and listens
     return null; }
   // a new message while Gull is still talking cuts her off; while she is still thinking it waits its turn
   let replying = false, current = Promise.resolve();
   async function send(text, { hidden = false } = {}) { text = (text || '').trim(); if (!text) return;
     if (busy) { if (!replying) { toast('Still working on the last question…'); return; } stopSpeaking(); await current; if (busy) return; }
     if (mode === 'asleep') { mode = 'awake'; Eye.wake(); }
-    busy = true; lastActivity = Date.now(); stopSpeaking(); Ears.pause(); if (!hidden) { addLine('you', text); setHeard(text); } Eye.setState('thinking'); setSub('…', 'thinking');
+    busy = true; lastActivity = Date.now(); stopSpeaking(); if (!S.bargeIn) Ears.pause(); if (!hidden) { addLine('you', text); setHeard(text); } Eye.setState('thinking'); setSub('…', 'thinking');
     current = (async () => {
       try { const quick = hidden ? null : quickCommand(text); const reply = quick ? await quick : await brain(text); replying = true; await say(reply); }
       catch (e) { replying = true; await say('Something went wrong. ' + e.message); }

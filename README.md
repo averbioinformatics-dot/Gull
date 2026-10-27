@@ -25,7 +25,7 @@ Price data, the order book, and Fear & Greed come straight from public endpoints
    - "What's the news?" gives the top story, how it's likely to move BTC, whether it's priced in, events ahead, and whether to trade, wait or stay out. It scans the web if the last scan is over an hour old.
    - "Should I trade?" runs the full routine every time: fresh data, fresh news, past/present/future analysis, bull/base/bear odds, then the trade on screen with entry, stop, two targets, reward/risk, size, dollars at risk, and how to place it on Binance (buy plus OCO).
    - Anything about spot trading: order types, OCO, sizing, R multiples, RSI, sessions, CPI days, psychology.
-4. **"Close it"** or Esc brings the eye back full screen. **"Goodnight Gull"** or "that's all" puts her to sleep; she also dozes off after 10 quiet minutes (Settings).
+4. **Talk over her any time** and she stops and listens. **"Close it"** or Esc brings the eye back full screen. **"Goodnight Gull"** or "that's all" puts her to sleep; she also dozes off after 10 quiet minutes (Settings).
 
 The desk rules are enforced by the page, not just requested from the model. A buy with reward/risk under 1.5, a buy with high news event risk, a position under Binance's minimum, or conviction under 3 of 5 is shown as WAIT, with the reason.
 
@@ -71,7 +71,8 @@ Edit `public/index.html`, commit, push. Vercel redeploys automatically. Balance,
 - **"The sign-in service did not answer"** means the page is running without its `api` folder (for example, opened as a file). Use the Vercel URL, or `vercel dev` locally.
 - **"Server is missing …"** means an environment variable is not set in Vercel.
 - **She doesn't hear the wake words** if the mic button is red. Allow the microphone for the site (padlock icon → Site settings), use Chrome or Edge, and make sure you're on https. On Android Chrome the mic may beep when it restarts listening; that's the browser.
-- **She hears herself.** She stops listening while she talks. If your speakers are very loud she can still catch the tail end; lower the volume or use headphones. Tap the eye or press Esc to cut her off.
+- **Interrupting her.** Just talk: she keeps listening while she speaks, ignores her own voice coming back through the speakers, and stops as soon as you say something new, or "stop", "wait", "hold on". Say only "hold on" and she stops and waits. Tapping the eye or pressing Esc also cuts her off.
+- **She stops by herself mid-sentence.** Loud speakers can make her own voice sound different enough to count as you. Use headphones, lower the volume, or turn off "Let me interrupt her by talking" in Settings.
 - **Something she didn't mean wakes her.** "Hey girl" counts as "hey Gull" because speech recognition often hears it that way. Turn off wake words in Settings if that's a problem.
 - **The journal doesn't sync.** Check `SUPABASE_URL` / `SUPABASE_SERVICE_KEY`, and that the SQL ran (Table Editor should show `gull_state`).
 - **Prices don't load.** Binance blocks some countries at the browser level; a VPN location change fixes it.

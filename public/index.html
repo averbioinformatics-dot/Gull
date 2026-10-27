@@ -715,7 +715,15 @@ const Eye = (() => {
     try { await speak(`Hmm, okay. [breath] So Bitcoin's holding above support, and honestly? I'd just wait for a cleaner entry${callName() ? ', ' + callName() : ''}.`, $('#kVoice').value); }
     finally { S.voiceEngine = was.e; S.rate = was.r; S.voiceOn = was.on; b.disabled = false; b.textContent = 'Hear it'; syncVoiceFields(); } };
   $('#testKey').onclick = async () => { const st = $('#keyStatus'); st.textContent = 'Testing…'; st.className = 'small';
-    try { const r = await api('/api/anthropic'); const j = await r.json().catch(() => ({})); st.textContent = r.ok ? 'Brain online.' : (j.error || `Rejected (${r.status}).`); st.className = r.ok ? 'small up' : 'small down'; }
+    try { const r = await api('/api/anthropic?check=1&model=' + encodeURIComponent($('#model').value)); const j = await r.json().catch(() => ({})); const good = r.ok && j.ok;
+      // Anthropic's own reasons, in words that say what to do
+      const why = j.error ? j.error : j.type === 'authentication_error' ? 'Anthropic rejected the key (invalid or revoked). Copy a fresh key from console.anthropic.com → API Keys, paste only the key into ANTHROPIC_API_KEY, and redeploy.'
+        : /credit balance/i.test(j.message || '') ? 'The key works, but the Anthropic account has no credit. Add credit at console.anthropic.com → Billing.'
+        : j.type === 'permission_error' ? 'The key is not allowed to use this model or API: ' + j.message
+        : j.type === 'not_found_error' ? `Model not available for this key: ${j.message} Pick another model above.`
+        : j.type === 'rate_limit_error' ? 'Anthropic says too many requests or a spend limit was reached: ' + j.message
+        : `Anthropic answered ${j.status || r.status}${j.type ? ' (' + j.type + ')' : ''}: ${j.message || 'no details'}`;
+      st.textContent = good ? `Brain online (${j.model || 'model ok'}). Key ${j.key}.` : `${why}${j.key ? ` [Key in Vercel: ${j.key}]` : ''}`; st.className = good ? 'small up' : 'small down'; }
     catch (e) { st.textContent = e.message; st.className = 'small down'; } };
 
   // ---- subtitles ----

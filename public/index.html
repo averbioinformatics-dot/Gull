@@ -349,7 +349,7 @@ td.num,th.num{text-align:right;font-family:var(--font-mono);font-variant-numeric
       <div class="pane" data-pane="help" hidden>
         <div class="help">
           <h3>Waking her</h3>
-          <p>Gull sleeps with one ear open. Say <q>wakey wakey Gull</q>, <q>hey, I'm home</q> or <q>hey, I'm back</q> and she opens her eye and greets you. You can tap the eye too. Add your question in the same breath (<q>I'm back, what's the market doing?</q>) and she answers it straight after the greeting.</p>
+          <p>Gull sleeps with one ear open. Say <q>wakey wakey Gull</q>, <q>hey, I'm home</q> or <q>hey, I'm back</q> and she opens her eye and greets you. You can double-tap the eye too (one tap is enough when the microphone is off). She waits until you have finished talking, so a short pause mid-sentence is fine. Add your question in the same breath (<q>I'm back, what's the market doing?</q>) and she answers it straight after the greeting.</p>
           <h3>Talking to her</h3>
           <p>Once she's awake she keeps listening; just speak. What she says appears as subtitles under the eye. You can talk over her: she stops mid-sentence and listens (a bare <q>hold on</q> or <q>wait</q> just stops her). Headphones make this work best. Try <q>what's going on in the market</q>, <q>what's the top news and how does it affect us</q>, <q>should I trade right now</q>, <q>show me the 4 hour chart</q>, <q>log this trade</q>, <q>how's my journal</q>, <q>what would change your mind</q>, or ask her anything about spot trading: order types, OCO, position sizing, RSI, sessions, CPI days.</p>
           <p>When she shows you something, the eye moves to the left and the panel opens on the right. Say <q>close it</q> or press Esc to bring her back full screen. Say <q>goodnight Gull</q> or <q>that's all</q> to put her to sleep; she also dozes off by herself after a few quiet minutes (Settings).</p>
@@ -852,45 +852,64 @@ const Eye = (() => {
 
   // ---- wake and sleep words ----
   const GULL_RE = '(?:gull|gul|gulls|gal|goal|gold|girl)';
+  const WAKEY = '(?:wak(?:e|ey|ie|y|ee)|wacky|whacky|walkie|wiki|wicky)';
+  // home, back and the name count only at the start of what was said, so "I'm home" in the middle of a TV line does not wake her
   const WAKE = [
-    { kind: 'home', re: /\b(?:i'?m|i am|im)\s+(?:home|hom|hum)\b/ },
-    { kind: 'back', re: /\b(?:i'?m|i am|im)\s+back\b/ },
-    { kind: 'wakey', re: /\b(?:wak(?:e|ey|ie|y|ee)|wacky|whacky|walkie)[\s,-]+(?:wak(?:e|ey|ie|y|ee)|wacky|whacky|walkie)\b/ },
-    { kind: 'name', re: new RegExp(`\\b(?:hey|hi|hello|ok|okay|wake up)[\\s,]+${GULL_RE}\\b`) } ];
+    { kind: 'home', re: /\b(?:i'?m|i am|im)\s+(?:home|hom|hum)\b/, start: true },
+    { kind: 'back', re: /\b(?:i'?m|i am|im)\s+back\b/, start: true },
+    { kind: 'wakey', re: new RegExp(`\\b(?:${WAKEY}[\\s,-]+${WAKEY}|waikiki)\\b`) },
+    { kind: 'name', re: /\b(?:hey|hi|hello|ok|okay|wake up)[\s,]+(?:gull|gul|gulls|gal)\b/, start: true } ];
   const SLEEP_RE = new RegExp(`\\b(?:go to sleep|goodnight|good night|sleep now|go rest|that'?s all(?: for (?:now|today))?|bye(?: bye)? ${GULL_RE}|see you later ${GULL_RE})\\b`);
   const norm = s => s.toLowerCase().replace(/[’`]/g, "'").replace(/\s+/g, ' ').trim();
-  function matchWake(alts) { for (const a of alts) { const t = norm(a); for (const w of WAKE) { const m = t.match(w.re); if (m) {
+  function matchWake(alts) { for (const a of alts) { const t = norm(a); for (const w of WAKE) { const m = t.match(w.re); if (m && !(w.start && t.slice(0, m.index).split(' ').filter(Boolean).length > 2)) {
       const rest = t.slice(m.index + m[0].length).replace(new RegExp(`^[\\s,.!?-]*(?:${GULL_RE}\\b)?[\\s,.!?-]*`), '').trim(); return { kind: w.kind, rest }; } } } return null; }
 
   let mode = 'asleep', busy = false, lastActivity = Date.now();
   function showSleepHint() { if (mode !== 'asleep') return; setHeard('');
-    const how = !Ears.supported ? 'This browser cannot listen. Tap the eye to wake Gull, then type.' : Ears.blocked ? 'The microphone is blocked. Allow it for this site, or tap the eye.' : !Ears.on ? 'The microphone is off. Tap the eye to wake Gull, or turn the mic on.' : !S.wakeWords ? 'Tap the eye to wake Gull.' : 'Say “wakey wakey Gull”, “hey, I’m home” or “hey, I’m back”. Or tap the eye.';
+    const how = !Ears.supported ? 'This browser cannot listen. Tap the eye to wake Gull, then type.' : Ears.blocked ? 'The microphone is blocked. Allow it for this site, or tap the eye.' : !Ears.on ? 'The microphone is off. Tap the eye to wake Gull, or turn the mic on.' : !S.wakeWords ? 'Tap the eye to wake Gull.' : 'Say “wakey wakey Gull”, “hey, I’m home” or “hey, I’m back”. Or double-tap the eye.';
     setSub(how, 'hint'); }
   // ---- talking over her ----
   // While she speaks the mic stays open. What it hears is compared with what she is saying: her own voice coming back
   // through the speakers is ignored; new words (or "stop", "wait", "hold on") cut her off so she listens.
+  // The recognizer delivers words a second or more after they were spoken, so her own echo keeps arriving for a while
+  // after she stops; it is still filtered out for a few seconds then, and can neither wake her nor count as a question.
+  const stem = x => x.length > 4 ? x.replace(/(?:ing|ed|es|s)$/, '') : x;
   const wordsOf = t => norm(stripCues(t)).replace(/(\d),(?=\d)/g, '$1').match(/[a-z0-9']+/g) || [];
-  let ownWords = new Set(), ownUntil = 0;
-  function hearOwn(text) { ownWords = new Set([...ownWords, ...wordsOf(text)]); ownUntil = Infinity; }
-  function ownDone() { ownUntil = Date.now() + 3000; }
+  let ownWords = new Set(), ownPairs = new Set(), ownUntil = 0;
+  const isOwn = x => ownWords.has(x) || ownWords.has(stem(x));
+  function hearOwn(text) { if (Date.now() > ownUntil) { ownWords = new Set(); ownPairs = new Set(); }
+    const w = wordsOf(text).map(stem); w.forEach((x, i) => { ownWords.add(x); if (i) ownPairs.add(w[i - 1] + ' ' + x); });
+    for (const x of wordsOf(text)) ownWords.add(x); ownUntil = Infinity; }
+  function ownDone() { ownUntil = Date.now() + 4000; }
+  // after she stops, an echo is her words in her order: most word pairs match hers (single words alone are too common)
+  function isOwnEcho(text) { if (Date.now() > ownUntil) return false; const w = wordsOf(text).map(stem); if (!w.length) return true;
+    if (w.length === 1) return isOwn(w[0]); let hit = 0; for (let i = 1; i < w.length; i++) if (ownPairs.has(w[i - 1] + ' ' + w[i])) hit++; return hit / (w.length - 1) >= 0.5; }
   const STOP_RE = /\b(?:stop|wait|hold on|hang on|one sec(?:ond)?|enough|quiet|shut up|excuse me|listen|gull)\b/;
   function isInterruption(text) { if (Date.now() > ownUntil) ownWords = new Set();
-    const w = wordsOf(text); if (!w.length) return false; const novel = w.filter(x => !ownWords.has(x));
-    const stop = (text.toLowerCase().match(STOP_RE) || [])[0]; if (stop && !wordsOf(stop).every(x => ownWords.has(x))) return true;
-    return novel.length >= 2 && novel.length / w.length >= 0.4; }
-  let cutIn = false, cutTimer = null;
+    const w = wordsOf(text); if (!w.length) return false; const novel = w.filter(x => !isOwn(x));
+    const stop = (text.toLowerCase().match(STOP_RE) || [])[0]; if (stop && !wordsOf(stop).every(isOwn)) return true;
+    return novel.length >= 3 && novel.length / w.length >= 0.5; }
+  // People pause mid-sentence; the recognizer then closes a piece early. What you say is collected until you have
+  // been quiet for a moment, and only then sent, so she waits for the whole question.
+  const SETTLE_MS = 1300;
+  let heardBuf = '', settleTimer = null, cutIn = false, cutTimer = null;
+  function flushHeard() { clearTimeout(settleTimer); settleTimer = null; const t = heardBuf.trim(); heardBuf = ''; cutIn = false; clearTimeout(cutTimer);
+    if (Eye.state === 'listening') Eye.setState('idle'); if (t) send(t); }
+  function collect(text, final) { lastActivity = Date.now(); clearTimeout(settleTimer); settleTimer = null;
+    if (final) { heardBuf = (heardBuf + ' ' + text).trim(); setHeard(heardBuf, true); settleTimer = setTimeout(flushHeard, SETTLE_MS); }
+    else { setHeard((heardBuf + ' ' + text).trim(), true); if (heardBuf) settleTimer = setTimeout(flushHeard, SETTLE_MS * 3); } // a piece that never closes still goes
+    if (Eye.state === 'idle') Eye.setState('listening'); }
   function cutHerOff(text) { cutIn = true; clearTimeout(cutTimer); cutTimer = setTimeout(() => { cutIn = false; }, 10000); stopSpeaking(); Eye.setState('listening'); setHeard(text, true); setSub('…', 'thinking'); lastActivity = Date.now(); }
   Ears.hear((alts, final) => {
-    if (mode === 'asleep') { if (final && S.wakeWords) { const w = matchWake(alts); if (w) wakeUp(w.kind, w.rest); } return; }
+    if (mode === 'asleep') { if (final && S.wakeWords && !isOwnEcho(alts[0])) { const w = matchWake(alts); if (w) wakeUp(w.kind, w.rest); } return; }
     const text = alts[0];
-    if (cutIn) { lastActivity = Date.now(); setHeard(text, !final); if (final) { cutIn = false; clearTimeout(cutTimer); send(text); } return; } // the rest of what you said after cutting in
+    if (cutIn || heardBuf) { collect(text, final); return; } // you are mid-sentence: keep listening
     if (speaking || (busy && replying)) { // she is talking
       if (!S.bargeIn || !isInterruption(text)) return; // her own echo, or interrupting is off
-      cutHerOff(text); if (final) { cutIn = false; clearTimeout(cutTimer); send(text); } return; }
+      cutHerOff(text); collect(text, final); return; }
     if (busy) return; // still thinking about the last question
-    lastActivity = Date.now();
-    if (!final) { setHeard(text, true); if (Eye.state === 'idle') Eye.setState('listening'); return; }
-    cutIn = false; if (Eye.state === 'listening') Eye.setState('idle'); send(text); });
+    if (isOwnEcho(text)) return; // the tail end of her own last sentence
+    collect(text, final); });
 
   const pick = a => a[Math.floor(Math.random() * a.length)];
   // the built-in lines (greeting, goodbye) are written the way she talks: small fillers, a breath, a beat
@@ -911,10 +930,15 @@ const Eye = (() => {
     if (rest && rest.split(/\s+/).filter(Boolean).length >= 2) return send(rest);
     if (S.briefViaApi && state.ta) return send('Give me the opening market briefing: the scenario as it is across the daily, 4-hour and 15-minute, the last week and month, the desk verdict and why, and whether the news needs a scan. Under 120 words. Do not greet me again.', { hidden: true }); }
   async function goSleep(reason) { if (mode === 'asleep') return; closeStage(); openType(false); const you = callName() ? ', ' + callName() : '';
-    await say(reason === 'idle' ? "[sigh] It's gone quiet, so... I'll rest for a bit. Say wakey wakey Gull when you need me." : pick([`Okay${you}. [breath] I'll keep an ear open. Just say wakey wakey Gull.`, `Alright, night${you}. I'll be right here if you need me.`]));
+    await say(reason === 'idle' ? "[sigh] It's gone quiet, so... I'll rest for a bit. Just call me when you need me." : pick([`Okay${you}. [breath] I'll keep an ear open.`, `Alright, night${you}. I'll be right here if you need me.`])); // never her own wake words: she would hear them
     mode = 'asleep'; Eye.sleep(); Eye.setState('asleep'); setTimeout(showSleepHint, 1500); }
   setInterval(() => { if (mode === 'awake' && !busy && !speaking && S.autoSleepMin > 0 && Date.now() - lastActivity > S.autoSleepMin * 60000) goSleep('idle'); }, 15000);
-  $('#eyeSide').addEventListener('click', e => { if (e.target.closest('.dock,.typebar,.gate')) return; if (mode === 'asleep') { unlockAudio(); wakeUp('tap'); } else if (speaking) stopSpeaking(); });
+  // while she can listen, waking by hand takes a double tap, so a stray click does not start her talking
+  const canListen = () => Ears.supported && Ears.on && !Ears.blocked && S.wakeWords;
+  let lastTap = 0;
+  $('#eyeSide').addEventListener('click', e => { if (e.target.closest('.dock,.typebar,.gate')) return;
+    if (mode === 'asleep') { const now = Date.now(), dbl = now - lastTap < 450; lastTap = now; if (!canListen() || dbl) { lastTap = 0; unlockAudio(); wakeUp('tap'); } }
+    else if (speaking) stopSpeaking(); });
 
   // ---- typing ----
   function openType(o) { $('#typeBar').hidden = !o; $('#eyeSide').dataset.typing = String(o); $('#kbdBtn').setAttribute('aria-pressed', String(o)); if (o) setTimeout(() => $('#ask').focus(), 30); }

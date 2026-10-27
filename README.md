@@ -19,7 +19,7 @@ Price data, the order book, and Fear & Greed come straight from public endpoints
 ## How it works
 
 1. **Sign in.** Opening the link shows a username and password page. Each person sees their own journal and settings, and Gull greets them by first name; the news scan is shared. "Keep me signed in" lasts 30 days on that device; otherwise the session lasts 12 hours.
-2. **Asleep.** After sign-in the eye is a dim slit, listening only for its wake words: **"wakey wakey Gull"**, **"hey, I'm home"**, **"hey, I'm back"** (or "hey Gull"). You can tap the eye too.
+2. **Asleep.** After sign-in the eye is a dim slit, listening only for its wake words: **"wakey wakey Gull"**, **"hey, I'm home"**, **"hey, I'm back"** (or "hey Gull"), said at the start of a sentence. You can double-tap the eye too (a single tap when the microphone is off). Her own voice never wakes her.
 3. **Awake.** She opens the eye, greets you, gives the price and the desk's lean, and keeps listening. Ask in your own words:
    - "What's going on in the market?" gives the whole scenario: where we came from (daily trend, 7/30/90-day moves, place in the 300-day range, structure), what's happening now (4h momentum, 15m trigger, volume, order book, Fear & Greed, session), and what to watch next.
    - "What's the news?" gives the top story, how it's likely to move BTC, whether it's priced in, events ahead, and whether to trade, wait or stay out. It scans the web if the last scan is over an hour old.
@@ -73,7 +73,8 @@ Edit `public/index.html`, commit, push. Vercel redeploys automatically. Balance,
 - **She doesn't hear the wake words** if the mic button is red. Allow the microphone for the site (padlock icon → Site settings), use Chrome or Edge, and make sure you're on https. On Android Chrome the mic may beep when it restarts listening; that's the browser.
 - **Interrupting her.** Just talk: she keeps listening while she speaks, ignores her own voice coming back through the speakers, and stops as soon as you say something new, or "stop", "wait", "hold on". Say only "hold on" and she stops and waits. Tapping the eye or pressing Esc also cuts her off.
 - **She stops by herself mid-sentence.** Loud speakers can make her own voice sound different enough to count as you. Use headphones, lower the volume, or turn off "Let me interrupt her by talking" in Settings.
-- **Something she didn't mean wakes her.** "Hey girl" counts as "hey Gull" because speech recognition often hears it that way. Turn off wake words in Settings if that's a problem.
+- **Something she didn't mean wakes her.** The wake phrases only count at the start of a sentence, and she ignores her own voice for a few seconds after she speaks. If a TV or video still wakes her, turn off wake words in Settings and double-tap the eye instead.
+- **She mishears you.** The microphone language matters most: in Settings, try **English (India)** or **English (UK)** if US English gets your words wrong. Speak at a normal pace close to the mic; a headset helps a lot. She waits about a second after you stop before answering, so a short pause mid-sentence is fine.
 - **The journal doesn't sync.** Check `SUPABASE_URL` / `SUPABASE_SERVICE_KEY`, and that the SQL ran (Table Editor should show `gull_state`).
 - **Prices don't load.** Binance blocks some countries at the browser level; a VPN location change fixes it.
 - **The news scan times out.** Vercel functions are capped at 60 s on the Hobby plan; lower "Max web searches per news scan" in Settings to 3 or 4.

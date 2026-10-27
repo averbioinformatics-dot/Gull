@@ -1,0 +1,1330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gull</title>
+<meta name="theme-color" content="#070a0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gull">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23070a0f'/%3E%3Cpath d='M3 16Q16 5 29 16Q16 27 3 16Z' fill='none' stroke='%235fc8ff' stroke-width='1.6'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%235fc8ff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Three screens: sign-in, the eye (full screen, subtitles under it), and the split view where the eye moves left and the stage opens on the right. Dark command-room look; the eye's own light is the accent. */
+:root{
+  --bg:#070a0f; --panel:#0f141c; --panel-2:#151c27; --line:#1f2936; --line-strong:#2d3948;
+  --fg:#e6ecf2; --muted:#93a1b3; --faint:#5c6878;
+  --eye:#5fc8ff; --eye-soft:rgba(95,200,255,.14);
+  --up:#3ccf7a; --up-soft:rgba(60,207,122,.14); --down:#f05d5e; --down-soft:rgba(240,93,94,.14);
+  --warn:#f0a63a; --warn-soft:rgba(240,166,58,.14); --neutral:#8c96a8; --neutral-soft:rgba(140,150,168,.16);
+  --font-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --radius:12px; --ease:cubic-bezier(.2,.7,.2,1);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);height:100%;overflow:hidden}
+body{font-family:var(--font-body);font-size:14px;line-height:1.5}
+[hidden]{display:none!important}
+h1,h2,h3{margin:0;font-weight:600;text-wrap:balance}
+h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+a{color:var(--eye)}
+button{font:inherit;color:inherit}
+input,select{font:inherit;color:var(--fg);background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--eye);outline-offset:1px}
+.mono,.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)} .faint{color:var(--faint)} .small{font-size:12px}
+.up{color:var(--up)} .down{color:var(--down)} .warn{color:var(--warn)}
+.btn{border:1px solid var(--line-strong);background:var(--panel-2);border-radius:8px;padding:8px 13px;cursor:pointer;font-weight:500;line-height:1.2;white-space:nowrap}
+.btn:hover{border-color:var(--eye)} .btn:disabled{opacity:.45;cursor:default}
+.btn.primary{background:var(--eye);color:#04101a;border-color:transparent;font-weight:600}
+.btn.ghost{background:transparent} .btn.sm{padding:5px 10px;font-size:12px} .btn.danger{border-color:var(--down);color:var(--down)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;background:var(--neutral-soft);color:var(--neutral);white-space:nowrap}
+.chip.up{background:var(--up-soft);color:var(--up)} .chip.down{background:var(--down-soft);color:var(--down)} .chip.warn{background:var(--warn-soft);color:var(--warn)} .chip.eye{background:var(--eye-soft);color:var(--eye)}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--line-strong);border-top-color:var(--eye);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- sign-in ---------- */
+#login{position:fixed;inset:0;display:grid;place-items:center;padding:16px;background:radial-gradient(ellipse at 50% 38%,#0d1622 0%,var(--bg) 62%);overflow:auto}
+.login-card{width:min(380px,100%);display:grid;gap:14px;padding:30px 24px 22px;border:1px solid var(--line);border-radius:16px;background:rgba(15,20,28,.82);backdrop-filter:blur(8px)}
+.login-card .mark{width:132px;height:66px;justify-self:center;overflow:visible}
+.login-card .mark .lid{transform-origin:66px 33px;animation:blink 6s infinite}
+@keyframes blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.08)}}
+.login-card h1{text-align:center;letter-spacing:.32em;font-size:20px;margin-top:2px}
+.login-card .tag{text-align:center;color:var(--muted);font-size:12.5px;margin:-8px 0 6px}
+.login-card label{display:grid;gap:6px;font-size:12px;color:var(--muted);letter-spacing:.02em}
+.login-card input[type=text],.login-card input[type=password]{padding:11px 12px;font-size:15px;width:100%}
+.login-card .check{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.login-card .btn.primary{padding:11px;font-size:15px;margin-top:4px}
+.lerr{min-height:18px;color:var(--down);font-size:13px;text-align:center}
+.shake{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+
+/* ---------- the eye screen ---------- */
+#app{position:fixed;inset:0;display:grid;grid-template-columns:minmax(0,1fr) 0fr;grid-template-rows:100%;transition:grid-template-columns .5s var(--ease)}
+#app[data-split="true"]{grid-template-columns:minmax(300px,36%) minmax(0,1fr)}
+#eyeSide{position:relative;min-width:0;min-height:0;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#0b1119 0%,var(--bg) 70%);container-type:size;cursor:default}
+canvas#eye{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hud{position:absolute;top:0;left:0;right:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;padding:14px max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));pointer-events:none;z-index:2}
+.hud .brand{font-weight:700;letter-spacing:.28em;font-size:13px}
+.hud .pair{font-family:var(--font-mono);color:var(--faint);font-size:11px;letter-spacing:.05em;margin-left:8px}
+.hud .px{font-family:var(--font-mono);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+.hud .chg{font-family:var(--font-mono);font-size:12px;margin-left:8px}
+.hud .status{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);margin-left:auto}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--faint)} .dot.live{background:var(--up);box-shadow:0 0 0 3px var(--up-soft)} .dot.err{background:var(--down)}
+.eyestate{position:absolute;left:max(16px,env(safe-area-inset-left,0px));top:46px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);z-index:2;pointer-events:none}
+.voiceload{position:absolute;left:max(16px,env(safe-area-inset-left,0px));top:64px;font-family:var(--font-mono);font-size:10.5px;color:var(--eye);z-index:2;pointer-events:none}
+.subs{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));width:min(94%,980px);text-align:center;z-index:2;pointer-events:none;transition:bottom .25s}
+#eyeSide[data-typing="true"] .subs{bottom:calc(130px + env(safe-area-inset-bottom,0px))}
+.heard{font-size:clamp(12px,1.7cqi,16px);color:var(--muted);font-style:italic;min-height:1.4em;margin-bottom:6px;opacity:.9}
+.heard.live{color:var(--faint)}
+.subtitle{font-size:clamp(16px,3.2cqi,30px);line-height:1.45;font-weight:500;min-height:1.45em;text-wrap:balance}
+.subtitle span{background:rgba(0,0,0,.58);color:#f4f7fa;padding:.08em .45em;border-radius:6px;box-decoration-break:clone;-webkit-box-decoration-break:clone;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.subtitle.swap span{animation:subIn .22s ease-out}
+@keyframes subIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.subtitle.hint span{background:transparent;color:var(--faint);font-size:.6em;font-weight:400;text-shadow:none}
+.subtitle.thinking span{background:transparent;color:var(--muted);font-size:.7em}
+.gate{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;background:rgba(7,10,15,.55);cursor:pointer;text-align:center;padding:16px}
+.gate p{margin:0;color:var(--muted);font-size:13px;max-width:44ch}
+.gate .btn{font-size:15px;padding:11px 20px}
+.typebar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(68px + env(safe-area-inset-bottom,0px));width:min(92%,620px);display:flex;gap:8px;z-index:3}
+.typebar input{flex:1;width:0;padding:11px 12px;font-size:15px;background:rgba(21,28,39,.92)}
+.dock{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;gap:6px;padding:5px;border:1px solid var(--line);border-radius:999px;background:rgba(15,20,28,.78);backdrop-filter:blur(6px);z-index:3}
+.icon{width:40px;height:40px;border-radius:50%;border:0;background:transparent;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.icon:hover{color:var(--fg);background:var(--panel-2)}
+.icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.icon[aria-pressed="true"]{color:var(--eye)}
+#micBtn[data-state="on"]{color:var(--eye);box-shadow:inset 0 0 0 1px var(--eye-soft)}
+#micBtn[data-state="blocked"],#micBtn[data-state="unsupported"]{color:var(--down)}
+#muteBtn .off{display:none} #muteBtn[aria-pressed="true"] .off{display:inline} #muteBtn[aria-pressed="true"] .on{display:none}
+
+/* ---------- the stage (right side) ---------- */
+#stage{min-width:0;min-height:0;overflow:hidden;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;opacity:0;transition:opacity .35s ease .1s}
+#app[data-split="true"] #stage{opacity:1}
+@media (max-width:820px){
+  #app{grid-template-columns:100%;grid-template-rows:minmax(0,1fr) 0fr;transition:grid-template-rows .5s var(--ease)}
+  #app[data-split="true"]{grid-template-columns:100%;grid-template-rows:44% minmax(0,1fr)}
+  #stage{border-left:0;border-top:1px solid var(--line)}
+  #app[data-split="true"] .eyestate,#app[data-split="true"] .heard{display:none}
+  #app[data-split="true"] .subs{bottom:calc(62px + env(safe-area-inset-bottom,0px))}
+  #app[data-split="true"] #eyeSide[data-typing="true"] .subs{bottom:calc(112px + env(safe-area-inset-bottom,0px))}
+  #app[data-split="true"] .subtitle{font-size:15px}
+  #app[data-split="true"] .dock{bottom:8px}
+  #app[data-split="true"] .typebar{bottom:58px}
+}
+@media (max-width:600px){ .hud{flex-wrap:nowrap} .hud .pair,#statusText{display:none} }
+@media (prefers-reduced-motion:reduce){ #app,#stage,.subs{transition:none} .subtitle.swap span,.spinner,.login-card .mark .lid{animation:none} }
+.stage-head{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--line);padding:6px 8px 0 10px}
+.tabs{display:flex;gap:2px;overflow-x:auto;flex:1;scrollbar-width:none}
+.tabs button{border:0;background:transparent;padding:9px 11px;cursor:pointer;color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase;border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--eye)}
+.stage-body{flex:1;min-height:0;overflow:auto;container-type:size;container-name:stage}
+.pane{padding:16px 18px 28px}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+h3.sec{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:16px 0 8px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:5px 10px;cursor:pointer;font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--panel-2);color:var(--fg)}
+#chart{height:max(260px,calc(100cqh - 110px));width:100%;position:relative}
+#chartFallback{position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:var(--muted);text-align:center;padding:20px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-family:var(--font-mono);font-size:11.5px;color:var(--muted);margin-bottom:8px}
+.legend i{display:inline-block;width:10px;height:2px;vertical-align:middle;margin-right:6px}
+.empty{color:var(--muted);font-size:13.5px;border:1px dashed var(--line-strong);border-radius:10px;padding:16px;line-height:1.6}
+.empty q{color:var(--fg)}
+
+.verdict{display:grid;gap:10px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--panel-2);margin-bottom:12px}
+.big{font-size:24px;font-weight:700;line-height:1.1}
+.big.lean-long,.big.strong{color:var(--up)} .big.lean-bear,.big.strong-bear{color:var(--down)} .big.neutral{color:var(--neutral)} .big.gated{color:var(--warn)}
+.meter{position:relative;height:8px;border-radius:6px;background:linear-gradient(90deg,var(--down),var(--neutral) 50%,var(--up));opacity:.9}
+.meter .needle{position:absolute;top:-5px;width:4px;height:18px;background:var(--fg);border-radius:2px;transform:translateX(-50%);box-shadow:0 0 0 2px var(--panel-2)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font-size:13px;margin:0}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+ul.reasons{margin:0;padding-left:18px;color:var(--muted);font-size:13px}
+.tfgrid{display:grid;gap:10px}
+.tf{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--panel-2);display:grid;gap:6px;align-content:start}
+.tf .head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tf .role{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.tf .sc{font-family:var(--font-mono);font-weight:600}
+.tf ul{margin:0;padding-left:16px;font-size:12.5px;color:var(--muted)}
+.bar{height:6px;border-radius:4px;background:var(--line);position:relative;overflow:hidden}
+.bar b{position:absolute;top:0;bottom:0;background:var(--neutral)} .bar b.up{background:var(--up)} .bar b.down{background:var(--down)}
+.levels{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.levels h3{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px}
+.levels .lv{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:3px 0;border-bottom:1px dashed var(--line)}
+.grid{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.tile{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--panel-2);min-width:0}
+.tile .lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.tile .val{font-family:var(--font-mono);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px;overflow-wrap:anywhere}
+.tile .val.txt{font-family:var(--font-body);font-size:14px;font-weight:600}
+.tile .sub{font-size:12px;color:var(--muted);font-family:var(--font-mono)}
+.note{border:1px solid var(--warn);background:var(--warn-soft);border-radius:8px;padding:8px 12px;font-size:13px}
+.disclaimer{font-size:11.5px;color:var(--faint);border-top:1px dashed var(--line);padding-top:8px;margin-top:14px}
+.two-col,.three-col{display:grid;gap:12px}
+.case{border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.55}
+.case h3{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;color:var(--muted)}
+@container stage (min-width:620px){ .grid{grid-template-columns:repeat(4,minmax(0,1fr))} .tfgrid,.three-col{grid-template-columns:repeat(3,minmax(0,1fr))} .two-col{grid-template-columns:1fr 1fr} }
+
+/* analysis */
+.an-head{display:grid;gap:8px;border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--panel-2)}
+.an-head .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.conv{display:inline-flex;gap:4px;align-items:center;font-size:11.5px;color:var(--muted)} .conv i{width:9px;height:9px;border-radius:50%;background:var(--line-strong)} .conv i.on{background:var(--eye)}
+.an-head .headline{font-size:15px;line-height:1.5}
+.steps{margin:0;padding-left:20px;font-size:13px;line-height:1.7} .steps b{font-family:var(--font-mono);font-weight:600}
+.scen{display:flex;height:10px;border-radius:6px;overflow:hidden;margin:4px 0 10px}
+.scen b{display:block} .scen .bull{background:var(--up)} .scen .base{background:var(--neutral)} .scen .bear{background:var(--down)}
+.checks{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:13px}
+.checks li{display:flex;gap:8px;align-items:flex-start} .checks .ok{color:var(--up)} .checks .no{color:var(--down)}
+ul.plain{margin:0;padding-left:18px;font-size:13px;color:var(--muted);line-height:1.6}
+
+/* news */
+.briefing{white-space:pre-wrap;font-size:13.5px;line-height:1.6}
+.hypo{border-left:3px solid var(--eye);padding:8px 12px;background:var(--eye-soft);border-radius:0 8px 8px 0;font-size:14px;margin-block:10px}
+.top-story{border:1px solid var(--line-strong);border-radius:10px;padding:12px 14px;background:var(--panel-2);margin-bottom:12px;display:grid;gap:6px}
+.top-story .t{font-size:16px;font-weight:600;line-height:1.35}
+.list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.list li{display:flex;gap:10px;align-items:flex-start;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--line)} .list li:last-child{border-bottom:0}
+.list .when{font-family:var(--font-mono);font-size:12px;color:var(--muted);min-width:110px}
+.list .imp{font-family:var(--font-mono);font-size:12px;min-width:36px;text-align:right}
+.usage{font-family:var(--font-mono);font-size:11.5px;color:var(--faint);margin-top:8px}
+.errbox{border:1px solid var(--down);background:var(--down-soft);border-radius:8px;padding:10px 12px;font-size:13px;white-space:pre-wrap;word-break:break-word}
+
+/* journal */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:12px}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
+th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+td.num,th.num{text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.form{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));align-items:end}
+.form label{display:grid;gap:4px;font-size:12px;color:var(--muted)} .form input{width:100%}
+.inline-close{display:flex;gap:6px;align-items:center} .inline-close input{width:110px}
+
+/* transcript + help */
+.tlog{display:grid;gap:8px}
+.tlog .l{font-size:13.5px;padding:8px 12px;border-radius:10px;max-width:92%;white-space:pre-wrap;word-break:break-word;border:1px solid var(--line)}
+.tlog .l.you{justify-self:end;background:var(--panel-2)} .tlog .l.gull{color:var(--muted)}
+.tlog .l time{display:block;font-family:var(--font-mono);font-size:10.5px;color:var(--faint);margin-bottom:2px}
+.help{max-width:72ch;font-size:13.5px;line-height:1.6} .help h3{font-size:13px;margin:16px 0 4px} .help ul,.help ol{padding-left:20px;margin:4px 0} .help q{color:var(--fg)}
+
+/* settings */
+#settings{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--panel);border-left:1px solid var(--line);z-index:20;padding:16px max(16px,env(safe-area-inset-right,0px)) 24px 16px;overflow-y:auto;transform:translateX(100%);transition:transform .25s ease;visibility:hidden}
+#settings[data-open="true"]{transform:none;visibility:visible}
+@media (prefers-reduced-motion:reduce){ #settings{transition:none} }
+#settings h2{margin-bottom:12px}
+#settings .field{display:grid;gap:4px;margin-bottom:12px;font-size:12.5px;color:var(--muted)}
+#settings input:not([type=checkbox]),#settings select{width:100%}
+#settings .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#settings hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+#scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:15;display:none} #scrim[data-open="true"]{display:block}
+.keynote{font-size:12px;color:var(--muted);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin-bottom:12px}
+.toast{position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;z-index:30;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw}
+.toast[data-show="true"]{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- ===== Page 1: sign in ===== -->
+<div id="login" hidden>
+  <form class="login-card" id="loginForm" autocomplete="on" novalidate>
+    <svg class="mark" viewBox="0 0 132 66" aria-hidden="true">
+      <g class="lid"><path d="M4 33 Q66 -8 128 33 Q66 74 4 33Z" fill="none" stroke="#5fc8ff" stroke-opacity=".55" stroke-width="1.4"/>
+      <circle cx="66" cy="33" r="17" fill="none" stroke="#5fc8ff" stroke-width="1.4" stroke-dasharray="3 3"/><circle cx="66" cy="33" r="7.5" fill="#5fc8ff"/></g>
+    </svg>
+    <h1>GULL</h1>
+    <p class="tag">BTC / USDT spot desk · second brain</p>
+    <label>Username<input type="text" id="lUser" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+    <label>Password<input type="password" id="lPass" name="password" autocomplete="current-password" required></label>
+    <label class="check"><input type="checkbox" id="lRemember" checked> Keep me signed in on this device for 30 days</label>
+    <button class="btn primary" id="lBtn" type="submit">Sign in</button>
+    <div class="lerr" id="lErr" role="alert"></div>
+  </form>
+</div>
+
+<!-- ===== Page 2: the eye, and the stage beside it ===== -->
+<div id="app" hidden data-split="false">
+  <section id="eyeSide" aria-label="Gull">
+    <canvas id="eye"></canvas>
+    <header class="hud">
+      <div><span class="brand">GULL</span><span class="pair">BTC/USDT · SPOT</span></div>
+      <div><span class="px num" id="price">—</span><span class="chg num" id="chg">24h —</span></div>
+      <div class="status"><span class="dot" id="dot"></span><span id="statusText">Connecting…</span></div>
+    </header>
+    <div class="eyestate" id="eyeState">asleep</div>
+    <div class="voiceload" id="voiceLoad" hidden></div>
+    <div class="subs" aria-live="polite">
+      <div class="heard" id="heard"></div>
+      <div class="subtitle hint" id="subtitle"><span></span></div>
+    </div>
+    <div class="gate" id="gate" hidden><button class="btn primary" type="button" id="gateBtn">Tap to let Gull listen</button><p>Your browser needs one tap before the page can use the microphone and speak out loud.</p></div>
+    <form class="typebar" id="typeBar" hidden><input type="text" id="ask" placeholder="Type to Gull… (Esc to close)" autocomplete="off"><button class="btn primary" type="submit">Send</button></form>
+    <nav class="dock" aria-label="Controls">
+      <button class="icon" id="micBtn" type="button" title="Microphone" data-state="off"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+      <button class="icon" id="kbdBtn" type="button" title="Type instead (/)" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M7 14h10"/></svg></button>
+      <button class="icon" id="panelsBtn" type="button" title="Open the stage" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="16" rx="1.5"/><rect x="13" y="4" width="8" height="16" rx="1.5"/></svg></button>
+      <button class="icon" id="muteBtn" type="button" title="Voice on/off" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="on" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="off" d="M17 9.5l5 5M22 9.5l-5 5"/></svg></button>
+      <button class="icon" id="settingsBtn" type="button" title="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
+      <button class="icon" id="logoutBtn" type="button" title="Sign out"><svg viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 8l-4 4 4 4M6 12h10"/></svg></button>
+    </nav>
+  </section>
+
+  <section id="stage" aria-label="Stage" inert>
+    <div class="stage-head">
+      <div class="tabs" role="tablist" id="tabs">
+        <button role="tab" type="button" data-pane="market" aria-selected="true">Market</button>
+        <button role="tab" type="button" data-pane="chart" aria-selected="false">Chart</button>
+        <button role="tab" type="button" data-pane="analysis" aria-selected="false">Analysis</button>
+        <button role="tab" type="button" data-pane="trade" aria-selected="false">Plan</button>
+        <button role="tab" type="button" data-pane="score" aria-selected="false">Score</button>
+        <button role="tab" type="button" data-pane="news" aria-selected="false">News</button>
+        <button role="tab" type="button" data-pane="journal" aria-selected="false">Journal</button>
+        <button role="tab" type="button" data-pane="transcript" aria-selected="false">Transcript</button>
+        <button role="tab" type="button" data-pane="help" aria-selected="false">Help</button>
+      </div>
+      <button class="icon" id="closeStage" type="button" title="Close (Esc)"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="stage-body">
+
+      <div class="pane" data-pane="market">
+        <div class="ph"><h2>Market overview · BTC/USDT</h2><span class="chip" id="mktAge">loading</span></div>
+        <div id="mktBody"><div class="empty">Loading Binance data…</div></div>
+      </div>
+
+      <div class="pane" data-pane="chart" hidden>
+        <div class="ph"><h2>Price</h2>
+          <div class="seg" id="tfSeg" role="group" aria-label="Chart timeframe">
+            <button type="button" data-tf="15m" aria-pressed="true">15m</button><button type="button" data-tf="1h" aria-pressed="false">1h</button><button type="button" data-tf="4h" aria-pressed="false">4h</button><button type="button" data-tf="1d" aria-pressed="false">1d</button>
+          </div></div>
+        <div class="legend"><span><i style="background:#f2b531"></i>EMA 21</span><span><i style="background:#5b9cf6"></i>EMA 50</span><span><i style="background:#b57edc"></i>EMA 200</span><span><i style="background:var(--down)"></i>stop</span><span><i style="background:var(--up)"></i>targets</span><span class="faint" id="chartStamp"></span></div>
+        <div id="chart"><div id="chartFallback"></div></div>
+      </div>
+
+      <div class="pane" data-pane="analysis" hidden>
+        <div id="analysisBody"><div class="empty">No trade analysis yet. Ask Gull <q>should I trade right now?</q> or <q>give me a setup</q>. She refreshes the data, checks the news, studies the past, present and what's likely next, and puts the full case here with entry, stop, targets, size and the dollar risk.</div></div>
+      </div>
+
+      <div class="pane" data-pane="trade" hidden>
+        <div class="verdict">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>Desk verdict</h2><span class="chip" id="verdictAge">waiting for data</span></div>
+          <div class="big neutral" id="verdictAction">—</div>
+          <div class="meter"><div class="needle" id="needle" style="left:50%"></div></div>
+          <dl class="kv"><dt>Combined score</dt><dd id="vScore">—</dd><dt>Chart score</dt><dd id="vTa">—</dd><dt>News score</dt><dd id="vNews">—</dd><dt>Invalidation</dt><dd id="vInval">—</dd></dl>
+          <ul class="reasons" id="vReasons"></ul>
+        </div>
+        <div class="ph"><h2>Trade plan at market (spot, long only)</h2><button class="btn sm primary" id="logBtn" type="button" disabled>Log to journal</button></div>
+        <div class="grid" id="planGrid"></div>
+        <div id="planNotes" style="margin-top:10px;display:grid;gap:8px"></div>
+        <div class="disclaimer">A probability read from indicators and headlines, not financial advice. It will be wrong a large share of the time. You decide, you manage the risk.</div>
+      </div>
+
+      <div class="pane" data-pane="score" hidden>
+        <div class="ph"><h2>Chart score</h2><span class="chip" id="taTier">—</span></div>
+        <div class="tfgrid" id="tfgrid"></div>
+        <div class="levels"><div><h3>Support below</h3><div id="supports"></div></div><div><h3>Resistance above</h3><div id="resistances"></div></div></div>
+      </div>
+
+      <div class="pane" data-pane="news" hidden>
+        <div class="ph"><h2>News desk</h2><div style="display:flex;gap:8px;align-items:center"><span class="chip" id="newsAge">no scan yet</span><button class="btn sm primary" id="scanBtn" type="button">Scan news</button></div></div>
+        <div id="newsBody"><div class="empty">No news scan yet. Ask Gull <q>what's the news?</q> or press the button. Each scan searches the web through your server's API key, costs a few cents and takes 20–60 seconds.</div></div>
+      </div>
+
+      <div class="pane" data-pane="journal" hidden>
+        <div class="ph"><h2>Paper-trade journal</h2><div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn sm" id="checkBtn" type="button">Check open trades</button><button class="btn sm" id="exportBtn" type="button">Export</button>
+          <label class="btn sm" for="importFile" style="cursor:pointer">Import<input type="file" id="importFile" accept="application/json" hidden></label><button class="btn sm danger" id="clearBtn" type="button">Clear</button></div></div>
+        <div class="stats" id="stats"></div>
+        <div id="logForm" hidden style="margin-bottom:14px"><div class="form">
+          <label>Entry <input type="number" step="0.01" id="fEntry"></label><label>Stop <input type="number" step="0.01" id="fStop"></label><label>Target <input type="number" step="0.01" id="fTarget"></label><label>Position (USDT) <input type="number" step="0.01" id="fNotional"></label><label>Note <input type="text" id="fNote" placeholder="why this trade"></label>
+          <div style="display:flex;gap:8px"><button class="btn primary" id="fSave" type="button">Save</button><button class="btn ghost" id="fCancel" type="button">Cancel</button></div></div></div>
+        <div class="tablewrap"><table id="journal"><thead><tr><th>Opened</th><th>Status</th><th class="num">Entry</th><th class="num">Stop</th><th class="num">Target</th><th class="num">Size</th><th class="num">Chart</th><th class="num">News</th><th>Note</th><th class="num">Exit</th><th class="num">R</th><th class="num">Net $</th><th></th></tr></thead><tbody id="jbody"></tbody></table></div>
+        <p class="small muted" style="margin:10px 0 0">Net $ includes the round-trip fee. R is the result in units of the stop distance. After 30+ trades the numbers start to mean something.</p>
+      </div>
+
+      <div class="pane" data-pane="transcript" hidden>
+        <div class="ph"><h2>Conversation</h2><button class="btn sm ghost" id="clearChat" type="button">Start a new conversation</button></div>
+        <div class="tlog" id="tlog"><div class="empty">Nothing said yet.</div></div>
+      </div>
+
+      <div class="pane" data-pane="help" hidden>
+        <div class="help">
+          <h3>Waking her</h3>
+          <p>Gull sleeps with one ear open. Say <q>wakey wakey Gull</q>, <q>hey, I'm home</q> or <q>hey, I'm back</q> and she opens her eye and greets you. You can tap the eye too. Add your question in the same breath (<q>I'm back, what's the market doing?</q>) and she answers it straight after the greeting.</p>
+          <h3>Talking to her</h3>
+          <p>Once she's awake she keeps listening; just speak. What she says appears as subtitles under the eye. Try <q>what's going on in the market</q>, <q>what's the top news and how does it affect us</q>, <q>should I trade right now</q>, <q>show me the 4 hour chart</q>, <q>log this trade</q>, <q>how's my journal</q>, <q>what would change your mind</q>, or ask her anything about spot trading: order types, OCO, position sizing, RSI, sessions, CPI days.</p>
+          <p>When she shows you something, the eye moves to the left and the panel opens on the right. Say <q>close it</q> or press Esc to bring her back full screen. Say <q>goodnight Gull</q> or <q>that's all</q> to put her to sleep; she also dozes off by herself after a few quiet minutes (Settings).</p>
+          <h3>Before any trade</h3>
+          <p>She refreshes the live data, makes sure the news scan is less than an hour old, then studies the past (daily trend, 7/30/90-day moves, where price sits in its 300-day range, structure), the present (4-hour momentum, 15-minute trigger, volume, the order book, Fear &amp; Greed, which session it is) and what's likely next (bull, base and bear scenarios with odds, the expected 24-hour range, the events ahead). The Analysis panel shows the case with the exact entry, stop, two targets, reward/risk, position size, the dollars you lose at the stop, and how to place it on Binance as a buy plus an OCO.</p>
+          <h3>The rules she won't break</h3>
+          <ol>
+            <li>No buy when reward/risk to the first target is under 1.5.</li>
+            <li>No buy when the news desk flags high event risk inside its horizon.</li>
+            <li>The position is sized so the stop loses your set risk percent, never more.</li>
+            <li>Counter-trend setups are flagged: half size or skip.</li>
+            <li>Spot only. "Bearish" means stay in USDT or sell what you hold.</li>
+          </ol>
+          <p>If she suggests a buy that breaks one of these, the page overrides her and shows WAIT, with the reason.</p>
+          <h3>Cost</h3>
+          <p>A normal question is a fraction of a cent to a few cents. A news scan adds about a cent per web search plus tokens: a few cents to 15 cents. A full trade analysis usually costs 2–10 cents, more if it has to scan the news first. Set a monthly limit in the Anthropic console.</p>
+          <h3>What she can't do</h3>
+          <p>See the future, place trades, or be right every time. A 55% win rate with 2:1 reward/risk is a good system and still loses 45 of 100 trades. Run the paper journal for 30 to 60 days before real money.</p>
+          <h3>Privacy</h3>
+          <p>Prices come from Binance's public endpoints straight from your browser. Fear &amp; Greed comes from alternative.me. Her natural voice (Kokoro, open source) runs on this device; the model downloads once from Hugging Face and no audio is sent anywhere. The Anthropic key lives on your server; you reach it by signing in. Voice recognition uses your browser's speech service (Google's in Chrome) while the microphone is on; turn it off with the mic button. Journal, news scans and settings sync through your Supabase database.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ===== Settings drawer ===== -->
+<div id="scrim"></div>
+<aside id="settings" aria-label="Settings">
+  <h2>Settings</h2>
+  <div class="keynote">Signed in as <b id="whoami">—</b>. The Anthropic key lives on your server. <button class="btn sm" id="testKey" type="button">Test brain</button> <span class="small" id="keyStatus"></span></div>
+  <div class="field"><label for="callMe">What Gull calls you</label><input type="text" id="callMe" placeholder="your name (blank: your username)"></div>
+  <div class="field"><label for="model">Model for Gull's thinking</label><select id="model"><option value="claude-sonnet-5-5">claude-sonnet-5-5 (balanced)</option><option value="claude-haiku-5-5">claude-haiku-5-5 (cheapest, fastest)</option><option value="claude-opus-5-5">claude-opus-5-5 (strongest, priciest)</option></select></div>
+  <div class="field"><label for="maxSearches">Max web searches per news scan</label><input type="number" id="maxSearches" min="1" max="10" step="1"></div>
+  <div class="field"><label class="row" style="gap:6px"><input type="checkbox" id="briefViaApi">After the greeting, read a full market briefing (uses the API)</label></div>
+  <hr>
+  <div class="field"><label class="row" style="gap:6px"><input type="checkbox" id="wakeWords">Wake on "wakey wakey Gull", "I'm home", "I'm back"</label></div>
+  <div class="field"><label for="autoSleep">Go back to sleep after this many quiet minutes (0 = never)</label><input type="number" id="autoSleep" min="0" max="120" step="1"></div>
+  <div class="field"><label for="voiceEngine">Voice engine</label><select id="voiceEngine"><option value="natural">Natural: Kokoro neural voice (free, runs on this device; ~90–310 MB download once)</option><option value="browser">Browser voice (robotic, nothing to download)</option></select><span class="small" id="voiceInfo"></span></div>
+  <div class="field" id="kVoiceField"><label for="kVoice">Natural voice</label><select id="kVoice">
+    <option value="af_heart">Heart: warm American woman (best)</option><option value="af_bella">Bella: bright American woman</option><option value="af_nicole">Nicole: soft, close American woman</option><option value="af_sarah">Sarah: American woman</option><option value="af_aoede">Aoede: American woman</option><option value="bf_emma">Emma: British woman</option><option value="bf_isabella">Isabella: British woman</option>
+    <option value="am_michael">Michael: American man</option><option value="am_fenrir">Fenrir: deep American man</option><option value="am_puck">Puck: lively American man</option><option value="bm_george">George: British man</option><option value="bm_fable">Fable: British man</option></select>
+    <div class="row"><button class="btn sm" id="voiceTest" type="button">Hear it</button></div></div>
+  <div class="field" id="browserVoiceField"><label for="voiceSel">Browser voice</label><select id="voiceSel"></select></div>
+  <div class="field"><label for="rate">Speaking rate: <span id="rateVal" class="mono"></span></label><input type="range" id="rate" min="0.7" max="1.4" step="0.05"></div>
+  <div class="field"><label for="lang">Your speaking language (for the microphone)</label><select id="lang"><option value="en-US">English (US)</option><option value="en-GB">English (UK)</option><option value="en-IN">English (India)</option><option value="ur-PK">Urdu (Pakistan)</option><option value="hi-IN">Hindi</option></select></div>
+  <hr>
+  <div class="field"><label for="newsWeight">News weight in the verdict: <span id="newsWeightVal" class="mono"></span>%</label><input type="range" id="newsWeight" min="0" max="100" step="5"></div>
+  <div class="field"><label for="newsMaxAge">Ignore news scans older than (hours)</label><input type="number" id="newsMaxAge" min="1" max="48" step="1"></div>
+  <div class="field"><label for="balance">Balance (USDT)</label><input type="number" id="balance" min="1" step="0.01"></div>
+  <div class="field"><label for="riskPct">Risk per trade (% of balance)</label><input type="number" id="riskPct" min="0.1" max="100" step="0.1"></div>
+  <div class="field"><label for="feePct">Fee per side (%)</label><input type="number" id="feePct" min="0" max="1" step="0.01"></div>
+  <div class="field"><label for="minOrder">Binance minimum order (USDT)</label><input type="number" id="minOrder" min="1" step="1"></div>
+  <div class="row" style="margin-top:10px"><button class="btn primary" id="saveSettings" type="button">Save</button><button class="btn ghost" id="closeSettings" type="button">Close</button></div>
+</aside>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js'"></script>
+
+<script type="text/js-worker" id="tts-worker">
+/* ===== Natural voice: Kokoro-82M (hexgrad/kokoro, Apache-2.0) running in a Web Worker, so the eye keeps animating while speech is made.
+   The model (~90 MB in q8, ~310 MB in fp32 for WebGPU) downloads once and stays in the browser cache. ===== */
+import { KokoroTTS } from 'https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/dist/kokoro.web.js';
+let tts = null, skipBelow = 0, chain = Promise.resolve();
+async function load(device) {
+  tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: device === 'webgpu' ? 'fp32' : 'q8', device,
+    progress_callback: p => { if (p.status === 'progress' && /\.onnx/.test(p.file || '')) postMessage({ type: 'progress', loaded: p.loaded, total: p.total }); } });
+}
+self.onmessage = e => { const m = e.data;
+  if (m.type === 'load') (async () => {
+    try { await load(m.device); postMessage({ type: 'ready', device: m.device }); }
+    catch (err) {
+      if (m.device === 'webgpu') { try { await load('wasm'); postMessage({ type: 'ready', device: 'wasm' }); return; } catch (e2) { err = e2; } }
+      postMessage({ type: 'error', error: String((err && err.message) || err) }); } })();
+  if (m.type === 'skip') skipBelow = m.below;
+  // one sentence at a time, in order; sentences cancelled while waiting are skipped without being made
+  if (m.type === 'say') chain = chain.then(async () => {
+    if (m.id < skipBelow) return postMessage({ type: 'audio', id: m.id, skipped: true });
+    try { const t0 = performance.now(); const a = await tts.generate(m.text, { voice: m.voice, speed: m.speed }); const pcm = a.audio;
+      postMessage({ type: 'audio', id: m.id, pcm, sr: a.sampling_rate, ms: performance.now() - t0 }, [pcm.buffer]); }
+    catch (err) { postMessage({ type: 'audio', id: m.id, error: String((err && err.message) || err) }); } });
+};
+</script>
+
+<script id="engine">
+/* ===== Engine: pure functions, no DOM. Tested separately. ===== */
+const Engine = (() => {
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const sma = (a, p) => a.map((_, i) => { if (i < p - 1) return null; let s = 0; for (let j = i - p + 1; j <= i; j++) { if (a[j] == null) return null; s += a[j]; } return s / p; });
+  const ema = (a, p) => { const out = new Array(a.length).fill(null); const k = 2 / (p + 1); let prev = null, seed = 0, n = 0;
+    for (let i = 0; i < a.length; i++) { const v = a[i]; if (v == null) continue;
+      if (prev === null) { seed += v; n++; if (n === p) { prev = seed / p; out[i] = prev; } }
+      else { prev = v * k + prev * (1 - k); out[i] = prev; } }
+    return out; };
+  const rsi = (c, p = 14) => { const out = new Array(c.length).fill(null); let ag = 0, al = 0;
+    for (let i = 1; i < c.length; i++) { const d = c[i] - c[i - 1]; const g = d > 0 ? d : 0, l = d < 0 ? -d : 0;
+      if (i <= p) { ag += g; al += l; if (i === p) { ag /= p; al /= p; out[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al); } }
+      else { ag = (ag * (p - 1) + g) / p; al = (al * (p - 1) + l) / p; out[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al); } }
+    return out; };
+  const macd = (c, f = 12, s = 26, sig = 9) => { const ef = ema(c, f), es = ema(c, s);
+    const line = c.map((_, i) => (ef[i] != null && es[i] != null) ? ef[i] - es[i] : null);
+    const idx = line.findIndex(v => v != null); const signal = new Array(c.length).fill(null);
+    if (idx >= 0) { const sigSub = ema(line.slice(idx), sig); for (let i = 0; i < sigSub.length; i++) signal[idx + i] = sigSub[i]; }
+    const hist = line.map((v, i) => (v != null && signal[i] != null) ? v - signal[i] : null); return { line, signal, hist }; };
+  const atr = (k, p = 14) => { const out = new Array(k.length).fill(null); let prev = null, seed = 0;
+    for (let i = 1; i < k.length; i++) { const tr = Math.max(k[i].h - k[i].l, Math.abs(k[i].h - k[i - 1].c), Math.abs(k[i].l - k[i - 1].c));
+      if (i <= p) { seed += tr; if (i === p) { prev = seed / p; out[i] = prev; } } else { prev = (prev * (p - 1) + tr) / p; out[i] = prev; } }
+    return out; };
+  const adx = (k, p = 14) => { const n = k.length; const out = { adx: new Array(n).fill(null), pdi: new Array(n).fill(null), mdi: new Array(n).fill(null) };
+    let sTR = 0, sP = 0, sM = 0, adxPrev = null, dxSeed = 0, dxN = 0;
+    for (let i = 1; i < n; i++) { const up = k[i].h - k[i - 1].h, dn = k[i - 1].l - k[i].l;
+      const pdm = (up > dn && up > 0) ? up : 0, mdm = (dn > up && dn > 0) ? dn : 0;
+      const tr = Math.max(k[i].h - k[i].l, Math.abs(k[i].h - k[i - 1].c), Math.abs(k[i].l - k[i - 1].c));
+      if (i <= p) { sTR += tr; sP += pdm; sM += mdm; if (i < p) continue; } else { sTR = sTR - sTR / p + tr; sP = sP - sP / p + pdm; sM = sM - sM / p + mdm; }
+      const pdi = sTR ? 100 * sP / sTR : 0, mdi = sTR ? 100 * sM / sTR : 0; out.pdi[i] = pdi; out.mdi[i] = mdi;
+      const dx = (pdi + mdi) ? 100 * Math.abs(pdi - mdi) / (pdi + mdi) : 0;
+      if (adxPrev === null) { dxSeed += dx; dxN++; if (dxN === p) { adxPrev = dxSeed / p; out.adx[i] = adxPrev; } }
+      else { adxPrev = (adxPrev * (p - 1) + dx) / p; out.adx[i] = adxPrev; } }
+    return out; };
+  const stoch = (k, p = 14, sm = 3) => { const raw = k.map((_, i) => { if (i < p - 1) return null; let hh = -Infinity, ll = Infinity;
+      for (let j = i - p + 1; j <= i; j++) { if (k[j].h > hh) hh = k[j].h; if (k[j].l < ll) ll = k[j].l; }
+      return hh === ll ? 50 : 100 * (k[i].c - ll) / (hh - ll); });
+    const K = sma(raw, sm), D = sma(K, sm); return { K, D }; };
+  const bollinger = (c, p = 20, m = 2) => { const mid = sma(c, p); const upper = [], lower = [];
+    for (let i = 0; i < c.length; i++) { if (mid[i] == null) { upper.push(null); lower.push(null); continue; }
+      let s = 0; for (let j = i - p + 1; j <= i; j++) s += (c[j] - mid[i]) ** 2; const sd = Math.sqrt(s / p); upper.push(mid[i] + m * sd); lower.push(mid[i] - m * sd); }
+    return { mid, upper, lower }; };
+  const swing = (k, n) => { const s = k.slice(-n); let hi = -Infinity, lo = Infinity; for (const x of s) { if (x.h > hi) hi = x.h; if (x.l < lo) lo = x.l; } return { hi, lo }; };
+  const divergence = (k, r, look = 20) => { const n = k.length, half = look / 2; if (n < look + 2) return null;
+    const a = k.slice(n - look, n - half), b = k.slice(n - half); const ra = r.slice(n - look, n - half), rb = r.slice(n - half);
+    if (ra.some(v => v == null) || rb.some(v => v == null)) return null;
+    const loA = Math.min(...a.map(x => x.l)), loB = Math.min(...b.map(x => x.l)), rLoA = Math.min(...ra), rLoB = Math.min(...rb);
+    const hiA = Math.max(...a.map(x => x.h)), hiB = Math.max(...b.map(x => x.h)), rHiA = Math.max(...ra), rHiB = Math.max(...rb);
+    if (loB < loA && rLoB > rLoA + 2) return 'bullish'; if (hiB > hiA && rHiB < rHiA - 2) return 'bearish'; return null; };
+
+  function analyze(k) {
+    const c = k.map(x => x.c), v = k.map(x => x.v), i = k.length - 1;
+    const e9 = ema(c, 9), e21 = ema(c, 21), e50 = ema(c, 50), e200 = ema(c, 200);
+    const r = rsi(c), m = macd(c), a = atr(k), dx = adx(k), st = stoch(k), bb = bollinger(c), vma = sma(v, 20);
+    return { price: c[i], ema9: e9[i], ema21: e21[i], ema50: e50[i], ema200: e200[i], rsi: r[i], rsiSeries: r,
+      macd: m.line[i], signal: m.signal[i], hist: m.hist[i], histPrev: m.hist[i - 1], atr: a[i],
+      adx: dx.adx[i], pdi: dx.pdi[i], mdi: dx.mdi[i], stK: st.K[i], stD: st.D[i], stKPrev: st.K[i - 1], stDPrev: st.D[i - 1],
+      bbU: bb.upper[i], bbL: bb.lower[i], bbUPrev: bb.upper[i - 1], bbLPrev: bb.lower[i - 1], closePrev: c[i - 1],
+      vol: v[i], volMA: vma[i], sw20: swing(k, 20), sw60: swing(k, 60), div: divergence(k, r), series: { e21, e50, e200 }, t: k[i].t };
+  }
+  function scoreRegime(d) { let s = 0; const notes = [];
+    if (d.ema9 > d.ema21 && d.ema21 > d.ema50) { s += 2; notes.push('EMA 9 > 21 > 50: bullish stack'); }
+    else if (d.ema9 < d.ema21 && d.ema21 < d.ema50) { s -= 2; notes.push('EMA 9 < 21 < 50: bearish stack'); }
+    else { if (d.price > d.ema50) { s += 1; notes.push('EMAs tangled, price above the 50'); } else { s -= 1; notes.push('EMAs tangled, price below the 50'); } }
+    if (d.adx != null) { if (d.adx >= 25) { if (d.pdi > d.mdi) { s += 1; notes.push(`ADX ${d.adx.toFixed(0)}: trending, buyers in control`); } else { s -= 1; notes.push(`ADX ${d.adx.toFixed(0)}: trending, sellers in control`); } } else notes.push(`ADX ${d.adx.toFixed(0)}: weak trend, rangy`); }
+    if (d.ema200 != null) { if (d.price > d.ema200) { s += 1; notes.push('Above the 200 EMA'); } else { s -= 1; notes.push('Below the 200 EMA'); } }
+    s = clamp(s, -4, 4); return { score: s, label: s >= 2 ? 'bullish' : s <= -2 ? 'bearish' : 'neutral', notes }; }
+  function scoreMomentum(d, regime) { let s = 0; const notes = [];
+    if (d.macd != null && d.signal != null) { if (d.macd > d.signal) { s += 1; notes.push('MACD above its signal line'); } else { s -= 1; notes.push('MACD below its signal line'); } }
+    if (d.hist != null && d.histPrev != null) { if (d.hist > d.histPrev) { s += 1; notes.push('Histogram rising'); } else { s -= 1; notes.push('Histogram falling'); } }
+    if (d.rsi != null) { if (d.rsi > 55) { s += 1; notes.push(`RSI ${d.rsi.toFixed(0)}: firm`); } else if (d.rsi < 45) { s -= 1; notes.push(`RSI ${d.rsi.toFixed(0)}: soft`); } else notes.push(`RSI ${d.rsi.toFixed(0)}: middle of the range`); }
+    if (d.stK != null && d.stKPrev != null) {
+      const crossUp = d.stKPrev <= d.stDPrev && d.stK > d.stD, crossDn = d.stKPrev >= d.stDPrev && d.stK < d.stD;
+      if (crossUp && d.stKPrev < 25) { const w = regime === 'bullish' ? 2 : 1; s += w; notes.push('Stochastic bullish cross from oversold' + (w === 1 ? ' (against regime, half weight)' : '')); }
+      if (crossDn && d.stKPrev > 75) { const w = regime === 'bearish' ? 2 : 1; s -= w; notes.push('Stochastic bearish cross from overbought' + (w === 1 ? ' (against regime, half weight)' : '')); }
+      if (!crossUp && !crossDn) notes.push(`Stochastic ${d.stK.toFixed(0)} / ${d.stD.toFixed(0)}`); }
+    s = clamp(s, -4, 4); return { score: s, notes }; }
+  function scoreTrigger(d) { let s = 0; const notes = []; const rs = d.rsiSeries, n = rs.length;
+    let reclaim = false, reject = false;
+    for (let j = n - 3; j < n; j++) { if (j < 1 || rs[j - 1] == null || rs[j] == null) continue; if (rs[j - 1] < 35 && rs[j] >= 35) reclaim = true; if (rs[j - 1] > 65 && rs[j] <= 65) reject = true; }
+    if (reclaim) { s += 2; notes.push('RSI reclaimed 35 from oversold'); } if (reject) { s -= 2; notes.push('RSI lost 65 from overbought'); }
+    if (d.bbL != null && d.bbLPrev != null) { if (d.closePrev < d.bbLPrev && d.price > d.bbL) { s += 1; notes.push('Back inside the Bollinger band from below'); } if (d.closePrev > d.bbUPrev && d.price < d.bbU) { s -= 1; notes.push('Back inside the Bollinger band from above'); } }
+    if (d.volMA && d.vol >= 1.5 * d.volMA) { if (d.price > d.closePrev) { s += 1; notes.push('Volume spike on an up candle'); } else { s -= 1; notes.push('Volume spike on a down candle'); } }
+    if (d.div === 'bullish') { s += 1; notes.push('Bullish RSI divergence'); } if (d.div === 'bearish') { s -= 1; notes.push('Bearish RSI divergence'); }
+    if (!notes.length) notes.push(`No trigger on this candle (RSI ${d.rsi == null ? '—' : d.rsi.toFixed(0)})`);
+    s = clamp(s, -4, 4); return { score: s, notes }; }
+  function composite(reg, mom, trg) { const c = 3 * reg.score / 4 + 2 * mom.score / 4 + 1 * trg.score / 4;
+    const counterRegime = reg.label !== 'neutral' && trg.score !== 0 && Math.sign(trg.score) !== Math.sign(reg.score);
+    return { score: +c.toFixed(2), counterRegime }; }
+  function tier(score) { if (score >= 3.5) return 'STRONG BULLISH'; if (score >= 1.5) return 'BULLISH'; if (score > -1.5) return 'NEUTRAL'; if (score > -3.5) return 'BEARISH'; return 'STRONG BEARISH'; }
+  function levels(d15, d4, d1) { const price = d15.price;
+    const raw = [ { p: d4.sw20.lo, n: '4H 20-bar low' }, { p: d4.sw60.lo, n: '4H 60-bar low' }, { p: d1.sw20.lo, n: '1D 20-bar low' }, { p: d1.sw60.lo, n: '1D 60-bar low' },
+      { p: d4.sw20.hi, n: '4H 20-bar high' }, { p: d4.sw60.hi, n: '4H 60-bar high' }, { p: d1.sw20.hi, n: '1D 20-bar high' }, { p: d1.sw60.hi, n: '1D 60-bar high' },
+      { p: d1.ema50, n: '1D EMA 50' }, { p: d1.ema200, n: '1D EMA 200' }, { p: d4.ema50, n: '4H EMA 50' }, { p: d4.ema200, n: '4H EMA 200' },
+      { p: d15.sw20.lo, n: '15m 20-bar low' }, { p: d15.sw20.hi, n: '15m 20-bar high' }, { p: d15.sw60.lo, n: '15m 60-bar low' }, { p: d15.sw60.hi, n: '15m 60-bar high' } ]
+      .filter(x => x.p != null && isFinite(x.p));
+    const dedupe = arr => { const out = []; for (const x of arr) { const near = out.find(y => Math.abs(y.p - x.p) / price < 0.0015); if (near) near.n += ', ' + x.n; else out.push({ ...x }); } return out; };
+    const supports = dedupe(raw.filter(x => x.p < price).sort((a, b) => b.p - a.p)).slice(0, 4);
+    const resistances = dedupe(raw.filter(x => x.p > price).sort((a, b) => a.p - b.p)).slice(0, 4);
+    return { supports, resistances }; }
+  function plan(d15, lv, s, entryAt) { const market = d15.price; const isLimit = entryAt > 0 && entryAt < market * 0.999; const entry = isLimit ? entryAt : market;
+    let inval = d15.sw20.lo;
+    // a limit at or under the 15m swing low needs the next structure below it as its invalidation
+    if (entry <= inval + 0.25 * d15.atr) { const below = lv.supports.find(x => x.p < entry - 0.25 * d15.atr); inval = below ? below.p : entry - 2 * d15.atr; }
+    let stop = inval - 1.5 * d15.atr; if (!(stop < entry)) stop = entry * 0.995;
+    const stopDist = entry - stop; const res = lv.resistances.filter(r => r.p > entry * 1.002);
+    // aim at the nearest level that pays at least 1.5R; if none does, take the nearest and let the RR gate flag it
+    const target = res.find(r => (r.p - entry) / stopDist >= 1.5) || (res.length ? res[0] : null);
+    const target2 = target ? res.find(r => r.p > target.p * 1.001) || null : null;
+    const rr = target ? (target.p - entry) / stopDist : null; const rr2 = target2 ? (target2.p - entry) / stopDist : null; const feeRT = s.feePct * 2 / 100; const riskUsd = s.balance * s.riskPct / 100;
+    let notional = riskUsd / (stopDist / entry); const notes = []; let tooSmall = false;
+    if (notional > s.balance) { notes.push(`The risk rule would allow a $${notional.toFixed(2)} position; you have $${s.balance.toFixed(2)}, so the whole balance is one position and the real risk is ${(100 * stopDist / entry).toFixed(2)}% of it.`); notional = s.balance; }
+    if (notional < s.minOrder) { tooSmall = true; notes.push(`The risk rule sizes this at $${notional.toFixed(2)}, under Binance's ~$${s.minOrder} minimum order. The smallest allowed order would risk $${(s.minOrder * stopDist / entry).toFixed(2)} (${(100 * s.minOrder * stopDist / entry / s.balance).toFixed(1)}% of your balance).`); }
+    const lossAtStop = notional * stopDist / entry + notional * feeRT;
+    const gainAtTarget = target ? notional * (target.p - entry) / entry - notional * feeRT : null;
+    const gainAtTarget2 = target2 ? notional * (target2.p - entry) / entry - notional * feeRT : null;
+    const breakeven = entry * (1 + feeRT);
+    return { entry, market, isLimit, inval, stop, stopPct: 100 * stopDist / entry, target, target2, rr, rr2, notional, riskUsd, lossAtStop, lossPctBalance: 100 * lossAtStop / s.balance, gainAtTarget, gainAtTarget2, breakeven, feeRT, notes, tooSmall, limitEntry: lv.supports[0] || null }; }
+  // the longer view from daily candles: returns, where price sits in its range, volatility, volume and structure
+  function context(k1d) { const c = k1d.map(x => x.c), n = c.length - 1, px = c[n]; const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
+    const ret = d => n - d >= 0 ? 100 * (px / c[n - d] - 1) : null;
+    let hi = -Infinity, lo = Infinity; for (const x of k1d) { if (x.h > hi) hi = x.h; if (x.l < lo) lo = x.l; }
+    const lr = []; for (let i = Math.max(1, n - 29); i <= n; i++) lr.push(Math.log(c[i] / c[i - 1])); const m = avg(lr);
+    const rv30 = Math.sqrt(lr.reduce((s, x) => s + (x - m) ** 2, 0) / Math.max(1, lr.length - 1)) * Math.sqrt(365) * 100;
+    const v = k1d.slice(0, -1).map(x => x.v); const volRatio = v.length >= 30 ? avg(v.slice(-7)) / avg(v.slice(-30)) : null;
+    const a = k1d.slice(-20), b = k1d.slice(-40, -20); let structure = 'not enough history';
+    if (b.length === 20) { const hh = Math.max(...a.map(x => x.h)) > Math.max(...b.map(x => x.h)), hl = Math.min(...a.map(x => x.l)) > Math.min(...b.map(x => x.l));
+      structure = hh && hl ? 'higher highs and higher lows (uptrend structure)' : !hh && !hl ? 'lower highs and lower lows (downtrend structure)' : hh ? 'wider swings both ways (expanding range)' : 'higher lows under lower highs (tightening range)'; }
+    const at = atr(k1d)[n];
+    return { price: px, days: k1d.length, ret7: ret(7), ret30: ret(30), ret90: ret(90), ret200: ret(200), hi, lo, fromHigh: 100 * (px / hi - 1), fromLow: 100 * (px / lo - 1), rangePos: hi > lo ? 100 * (px - lo) / (hi - lo) : 50,
+      atrPct: at ? 100 * at / px : null, rv30, volRatio, structure }; }
+  // order book: resting bid vs ask size within pct% of mid, as -1 (all asks) .. +1 (all bids)
+  function bookImbalance(bids, asks, pct = 1) { if (!bids.length || !asks.length) return null; const mid = (bids[0][0] + asks[0][0]) / 2; let b = 0, a = 0;
+    for (const [p, q] of bids) if (p >= mid * (1 - pct / 100)) b += p * q; for (const [p, q] of asks) if (p <= mid * (1 + pct / 100)) a += p * q;
+    return { mid, bidUsd: b, askUsd: a, imbalance: b + a ? (b - a) / (b + a) : 0, spreadPct: 100 * (asks[0][0] - bids[0][0]) / mid }; }
+  function session(d) { const h = d.getUTCHours(), wd = d.getUTCDay(); const weekend = wd === 0 || wd === 6;
+    const name = h < 7 ? 'Asia' : h < 13 ? 'London' : h < 16 ? 'London / New York overlap' : h < 21 ? 'New York' : 'late US, thin';
+    return { name, weekend, note: weekend ? 'weekend: thinner liquidity, more fake breakouts' : h >= 13 && h < 16 ? 'the most liquid hours; US data lands at 12:30–14:00 UTC' : h < 7 ? 'usually the quietest session' : '' }; }
+  function combine(ta, news, s, planRR, now) { const wN = s.newsWeight / 100; let newsScore = 0, newsUsed = false, stale = false; const reasons = [];
+    if (news && news.sentiment != null) { const ageH = (now - news.scannedAt) / 36e5; stale = ageH > s.newsMaxAgeH; newsUsed = !stale && wN > 0;
+      newsScore = clamp(news.sentiment * (news.confidence == null ? 0.5 : news.confidence) * 1.2, -6, 6); }
+    const score = newsUsed ? (1 - wN) * ta.score + wN * newsScore : ta.score;
+    let action, level;
+    if (score >= 3.5) { action = 'BUY'; level = 'strong'; } else if (score >= 1.5) { action = 'WATCH FOR ENTRY'; level = 'lean-long'; }
+    else if (score > -1.5) { action = 'WAIT'; level = 'neutral'; } else if (score > -3.5) { action = 'HOLD USDT'; level = 'lean-bear'; } else { action = 'SELL IF HOLDING'; level = 'strong-bear'; }
+    if (action === 'BUY' && newsUsed && news.event_risk === 'high') { action = 'WATCH FOR ENTRY'; level = 'gated'; reasons.push('Held back: the news desk flags high event risk inside its horizon.'); }
+    if (action === 'BUY' && planRR != null && planRR < 1.5) { action = 'WATCH FOR ENTRY'; level = 'gated'; reasons.push(`Held back: reward/risk is ${planRR.toFixed(1)}, under the 1.5 minimum.`); }
+    if (action === 'BUY' && planRR == null) { action = 'WATCH FOR ENTRY'; level = 'gated'; reasons.push('Held back: no clean resistance above to aim at.'); }
+    if (action === 'WATCH FOR ENTRY' && planRR != null && planRR < 1.5 && level !== 'gated') reasons.push(`Reward/risk at market is ${planRR.toFixed(1)}: not worth taking here. Wait for a dip toward support or a break above resistance.`);
+    if (ta.counterRegime) reasons.push('The 15m trigger fights the daily trend: a counter-regime setup with lower odds.');
+    if (newsUsed && news.priced_in) reasons.push('The news desk thinks the market has already priced in the main story.');
+    if (stale) reasons.push('The last news scan is older than your limit, so this verdict is the chart alone.');
+    if (!news) reasons.push('No news scan yet, so this verdict is the chart alone.');
+    return { score: +score.toFixed(2), action, level, reasons, newsScore: +newsScore.toFixed(2), newsUsed, stale }; }
+  function resolveTrade(tr, candles) { // candles after entry, oldest first; returns {exit, exitTs, how} or null
+    for (const c of candles) { if (c.t * 1000 <= tr.ts) continue; if (c.l <= tr.stop) return { exit: tr.stop, exitTs: c.t * 1000, how: 'stop' }; if (c.h >= tr.target) return { exit: tr.target, exitTs: c.t * 1000, how: 'target' }; } return null; }
+  function closeTrade(tr, exit, exitTs, feePct) { const feeRT = feePct * 2 / 100; const r = (exit - tr.entry) / (tr.entry - tr.stop); const net = tr.notional * (exit / tr.entry - 1) - tr.notional * feeRT;
+    return { ...tr, status: 'closed', exit, exitTs, r: +r.toFixed(2), net: +net.toFixed(4), outcome: net > 0 ? 'win' : net < 0 ? 'loss' : 'flat' }; }
+  function stats(trades) { const closed = trades.filter(t => t.status === 'closed'); const n = closed.length; if (!n) return { n: 0, open: trades.length - n };
+    const wins = closed.filter(t => t.net > 0), losses = closed.filter(t => t.net <= 0);
+    const sum = a => a.reduce((x, y) => x + y, 0); const gross = sum(wins.map(t => t.net)), lossSum = -sum(losses.map(t => t.net));
+    return { n, open: trades.length - n, winRate: 100 * wins.length / n, avgR: sum(closed.map(t => t.r)) / n, expectancy: sum(closed.map(t => t.net)) / n, total: sum(closed.map(t => t.net)), profitFactor: lossSum > 0 ? gross / lossSum : (gross > 0 ? Infinity : 0) }; }
+  return { ema, sma, rsi, macd, atr, adx, stoch, bollinger, analyze, scoreRegime, scoreMomentum, scoreTrigger, composite, tier, levels, plan, context, bookImbalance, session, combine, resolveTrade, closeTrade, stats };
+})();
+if (typeof module !== 'undefined') module.exports = Engine;
+</script>
+
+<script id="eye-src">
+/* ===== The eye: particles on canvas. Original drawing, no assets. ===== */
+const Eye = (() => {
+  let cv, ctx, W = 0, H = 0, dpr = 1, parts = [], glyphs = [], small = null, state = 'asleep', open = 0, openTarget = 0, mood = 0, moodTarget = 0, level = 0, t0 = performance.now(), reduced = false, font = 'monospace';
+  let compact = false, Rc = 0, cyF = 0.45; // compact: the short strip above the stage on a phone
+  let levelSrc = null;
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  function build() { parts = []; glyphs = []; const rings = small ? 22 : 30;
+    // iris: concentric rings of dots; the inner rings are solid, the outer ones break into dash patterns like lines of code
+    for (let k = 0; k < rings; k++) { const f = k / (rings - 1); const r = 0.32 + 0.68 * f; const n = Math.round((small ? 40 : 60) * (0.4 + 1.3 * r)); const off = Math.floor(Math.random() * 9); const dash = 3 + Math.floor(Math.random() * 6); const sp = rnd(0.55, 1.15);
+      for (let i = 0; i < n; i++) { if (f > 0.3 && ((i + off) % (dash + 2)) >= dash) continue; const a = (i / n) * Math.PI * 2; const g = f > 0.2 && Math.random() < 0.12;
+        const p = { r: r + rnd(-0.003, 0.003), a, dir: k % 2 ? 1 : -1, sp, size: (small ? 0.9 : 1.1) * rnd(0.9, 1.8) * (f < 0.3 ? 1.4 : 1), ph: rnd(0, 6.28), fr: rnd(0.3, 1.4), al: 0.5 + 0.5 * (1 - f * 0.5), g: g ? (Math.random() < 0.5 ? '0' : '1') : null };
+        (g ? glyphs : parts).push(p); } }
+    // wings: the arcs continue past the iris but only inside an almond shape, fading outward, so the whole thing reads as an eye
+    const outer = small ? 11 : 16;
+    for (let k = 0; k < outer; k++) { const r = 1.06 + (k / (outer - 1)) * 1.55; const n = Math.round((small ? 70 : 110) * r); const off = Math.floor(Math.random() * 7); const dash = 2 + Math.floor(Math.random() * 7);
+      for (let i = 0; i < n; i++) { if (((i + off) % (dash + 3)) >= dash) continue; const a = (i / n) * Math.PI * 2 + rnd(-0.02, 0.02); const x = Math.cos(a) * r, y = Math.sin(a) * r;
+        const lim = 0.95 * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(x) / 2.65, 2)), 0.75); if (Math.abs(y) > lim || lim <= 0) continue;
+        const fade = Math.pow(1 - (r - 1.06) / 1.6, 1.25) * (1 - 0.45 * Math.abs(y) / lim); parts.push({ x, y, size: rnd(1.0, 2.2), ph: rnd(0, 6.28), fr: rnd(0.3, 1.2), al: Math.min(1, 1.25 * fade), scatter: true }); } } }
+  // resizing only rescales; the particle field is rebuilt only when the size class changes, so the eye stays steady while the layout animates
+  function resize() { const rect = cv.getBoundingClientRect(); dpr = Math.min(1.75, window.devicePixelRatio || 1); W = rect.width; H = rect.height; cv.width = Math.max(1, Math.round(W * dpr)); cv.height = Math.max(1, Math.round(H * dpr)); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const s = Math.min(W, H * 1.6) < 600; if (s !== small || !parts.length) { small = s; build(); } }
+  const lerp = (a, b, t) => a + (b - a) * t;
+  function hue() { const base = 203, bull = 150, bear = 12; return mood >= 0 ? lerp(base, bull, mood) : lerp(base, bear, -mood); }
+  function frame(now) { requestAnimationFrame(frame); if (document.hidden || W < 2 || H < 2) return; const t = (now - t0) / 1000;
+    open = lerp(open, openTarget, 0.06); mood = lerp(mood, moodTarget, 0.03);
+    // with the natural voice the iris pulses with the real audio level; otherwise with a stand-in rhythm
+    const live = levelSrc ? levelSrc() : null;
+    const spk = state === 'speaking' ? (live != null ? Math.min(1, 0.2 + live) : 0.6 + 0.4 * Math.abs(Math.sin(t * 9) * Math.sin(t * 2.3 + 1))) : 0; level = lerp(level, spk, 0.3);
+    const dil = state === 'listening' ? 0.22 : state === 'thinking' ? -0.12 : 0; const spin = reduced ? 0.02 : state === 'thinking' ? 0.9 : state === 'listening' ? 0.22 : state === 'asleep' ? 0.04 : 0.09;
+    const bright = state === 'listening' ? 1.25 : state === 'thinking' ? 1.1 : 1 + 0.45 * level;
+    const Rt = compact ? Math.min(W * 0.22, H * 0.2) : Math.min(W * (W < H ? 0.3 : 0.2), H * 0.3); Rc = Rc ? lerp(Rc, Rt, 0.12) : Rt; cyF = lerp(cyF, compact ? 0.34 : 0.45, 0.12);
+    const R = Rc; const cx = W / 2, cy = H * cyF; const breathe = 1 + (reduced ? 0 : 0.012 * Math.sin(t * 0.7)); const sy = Math.max(0.035, open); const vis = 0.14 + 0.86 * open; // asleep: a dim slit, so the eye is still there
+    ctx.clearRect(0, 0, W, H); const h = hue();
+    for (const p of parts) if (p.scatter) { const tw = 0.6 + 0.4 * Math.sin(t * p.fr + p.ph); const a = p.al * tw * vis * bright; if (a < 0.02) continue; ctx.fillStyle = `hsla(${h},85%,72%,${a})`; ctx.beginPath(); ctx.arc(cx + p.x * R * breathe, cy + p.y * R * sy * breathe, p.size * 0.7, 0, 6.2832); ctx.fill(); }
+    const irisScale = 1 + dil * 0.35; const pupil = R * 0.30 * (1 + dil * 0.6);
+    for (const p of parts) if (!p.scatter) { const ang = p.a + p.dir * spin * t * p.sp; const rr = p.r * R * breathe * (p.r < 0.5 ? irisScale : 1); const x = cx + Math.cos(ang) * rr, y = cy + Math.sin(ang) * rr * sy;
+      if (rr < pupil) continue; const tw = 0.65 + 0.35 * Math.sin(t * p.fr + p.ph); const a = Math.min(1, p.al * tw * vis * bright); const l = 62 + 18 * (1 - p.r);
+      ctx.fillStyle = `hsla(${h},90%,${l}%,${a})`; ctx.beginPath(); ctx.arc(x, y, p.size, 0, 6.2832); ctx.fill(); }
+    ctx.font = `${Math.max(7, R * 0.075)}px ${font}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const p of glyphs) { const ang = p.a + p.dir * spin * t * p.sp; const rr = p.r * R * breathe; const x = cx + Math.cos(ang) * rr, y = cy + Math.sin(ang) * rr * sy; if (rr < pupil) continue;
+      const a = Math.min(1, 0.55 * p.al * (0.6 + 0.4 * Math.sin(t * p.fr + p.ph)) * vis * bright); ctx.fillStyle = `hsla(${h},90%,78%,${a})`; ctx.fillText(p.g, x, y); }
+    const grd = ctx.createRadialGradient(cx, cy, pupil * 0.5, cx, cy, pupil * 1.25); grd.addColorStop(0, 'rgba(2,4,8,1)'); grd.addColorStop(0.72, 'rgba(2,4,8,0.95)'); grd.addColorStop(1, `hsla(${h},90%,60%,0)`);
+    ctx.save(); ctx.translate(cx, cy); ctx.scale(1, sy); ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(0, 0, pupil * 1.25, 0, 6.2832); ctx.fill();
+    ctx.strokeStyle = `hsla(${h},95%,75%,${0.35 * vis * bright})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(0, 0, pupil * 1.02, 0, 6.2832); ctx.stroke();
+    const hl = ctx.createRadialGradient(pupil * 0.55, -pupil * 0.6, 0, pupil * 0.55, -pupil * 0.6, pupil * 0.75); hl.addColorStop(0, `hsla(${h},70%,92%,${0.45 * open})`); hl.addColorStop(1, 'hsla(0,0%,100%,0)'); ctx.fillStyle = hl; ctx.beginPath(); ctx.arc(pupil * 0.55, -pupil * 0.6, pupil * 0.75, 0, 6.2832); ctx.fill();
+    ctx.restore();
+    ctx.save(); ctx.translate(cx, cy); ctx.scale(1, sy); ctx.strokeStyle = `hsla(${h},90%,70%,${0.18 * vis})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, R * breathe, 0, 6.2832); ctx.stroke(); ctx.restore(); }
+  function init(canvas) { if (cv) return; cv = canvas; ctx = cv.getContext('2d'); reduced = matchMedia('(prefers-reduced-motion: reduce)').matches; font = getComputedStyle(document.documentElement).getPropertyValue('--font-mono') || 'monospace'; resize(); new ResizeObserver(resize).observe(cv); requestAnimationFrame(frame); }
+  const LABEL = { asleep: 'asleep · listening for wake words', idle: 'awake · listening', listening: 'hearing you', thinking: 'thinking', speaking: 'speaking' };
+  return { init, setState(s) { state = s; const el = document.getElementById('eyeState'); if (el) el.textContent = LABEL[s] || s; }, wake() { openTarget = 1; }, sleep() { openTarget = 0; }, setCompact(c) { compact = !!c; }, setLevelSource(f) { levelSrc = f; }, setMood(m) { moodTarget = Math.max(-1, Math.min(1, m)); }, get state() { return state; } };
+})();
+</script>
+
+<script>
+/* ===== App ===== */
+(() => {
+  const $ = s => document.querySelector(s);
+  const fmt = (n, d = 2) => n == null || !isFinite(n) ? '—' : n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmtPx = n => fmt(n, 2); const fmt0 = n => n == null || !isFinite(n) ? '—' : Math.round(n).toLocaleString();
+  const pct = (x, d = 1) => x == null || !isFinite(x) ? '—' : (x >= 0 ? '+' : '') + x.toFixed(d) + '%'; const sgn = x => x == null ? '' : x > 0 ? 'up' : x < 0 ? 'down' : '';
+  const fmtTime = ms => new Date(ms).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const ago = ms => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${(m / 60).toFixed(1)} h ago`; };
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const store = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+  const toast = msg => { const t = $('#toast'); t.textContent = msg; t.dataset.show = 'true'; clearTimeout(toast._t); toast._t = setTimeout(() => t.dataset.show = 'false', 3200); };
+  const tile = (l, v, s, cls = '') => `<div class="tile"><div class="lbl">${l}</div><div class="val ${cls}">${v}</div><div class="sub">${s || ''}</div></div>`;
+
+  // ---- session (page 1) ----
+  const SESSION_KEY = 'gull.session';
+  const session = {
+    get() { try { const raw = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY); const s = raw ? JSON.parse(raw) : null; return s && s.token && s.exp * 1000 > Date.now() ? s : null; } catch { return null; } },
+    set(s, remember) { try { (remember ? localStorage : sessionStorage).setItem(SESSION_KEY, JSON.stringify(s)); } catch {} },
+    clear() { try { localStorage.removeItem(SESSION_KEY); sessionStorage.removeItem(SESSION_KEY); localStorage.removeItem('gull.pw'); } catch {} } };
+  async function api(path, opts = {}) { const s = session.get(); if (!s) { signOut('Please sign in.'); throw new Error('Not signed in.'); }
+    const r = await fetch(path, { ...opts, cache: 'no-store', headers: { ...(opts.headers || {}), authorization: 'Bearer ' + s.token } });
+    if (r.status === 401) { signOut('Your session ended. Sign in again.'); throw new Error('Session ended. Sign in again.'); } return r; }
+
+  // ---- settings ----
+  const DEF = { model: 'claude-sonnet-5-5', maxSearches: 6, briefViaApi: false, voiceEngine: 'natural', kVoice: 'af_heart', voice: '', rate: 1.0, lang: 'en-US', voiceOn: true, micOn: true, wakeWords: true, autoSleepMin: 10, callMe: '', newsWeight: 50, newsMaxAgeH: 6, balance: 10, riskPct: 2, feePct: 0.1, minOrder: 5 };
+  const S = Object.assign({}, DEF);
+  // each signed-in person keeps their own settings, journal and analysis in this browser (and in Supabase); the news scan is shared
+  const uid = () => (session.get() || {}).user || 'anon';
+  const ukey = name => `gull.${name}.${uid()}`;
+  const callName = () => { const s = session.get() || {}; return (S.callMe || (s.name || s.user || '').split(/\s+/)[0] || '').trim(); };
+  // the first person to sign in on a device that ran the single-user version inherits its data, once
+  const takeLegacy = name => { const v = store.get('gull.' + name, null); if (v != null) try { localStorage.removeItem('gull.' + name); } catch {} return v; };
+  function loadUserLocal() { for (const k of Object.keys(S)) delete S[k]; Object.assign(S, DEF, store.get(ukey('settings'), null) || takeLegacy('settings') || {});
+    journal = store.get(ukey('journal'), null) || takeLegacy('journal') || []; state.analysis = store.get(ukey('analysis'), null) || takeLegacy('analysis'); setMuteUI(); }
+  // remote state in Supabase, through the /api/state function; local storage stays as a cache and as the fallback
+  const remote = { _q: {}, _t: null,
+    async load() { try { const r = await api('/api/state'); if (!r.ok) return null; const j = await r.json(); return j && j.ok !== false ? (j.data || {}) : null; } catch { return null; } },
+    save(key, value) { this._q[key] = value; clearTimeout(this._t); this._t = setTimeout(() => this.flush(), 800); },
+    async flush() { const items = Object.entries(this._q).map(([key, value]) => ({ key, value })); this._q = {}; if (!items.length || !session.get()) return; try { await api('/api/state', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ items }) }); } catch {} } };
+  const persistSettings = () => { store.set(ukey('settings'), S); remote.save('settings', S); };
+  function fillSettings() { $('#whoami').textContent = (session.get() || {}).name || uid(); $('#callMe').value = S.callMe;
+    $('#model').value = S.model; $('#maxSearches').value = S.maxSearches; $('#briefViaApi').checked = S.briefViaApi; $('#wakeWords').checked = S.wakeWords; $('#autoSleep').value = S.autoSleepMin; $('#voiceEngine').value = S.voiceEngine; $('#kVoice').value = S.kVoice; syncVoiceFields(); fillVoices(); $('#rate').value = S.rate; $('#rateVal').textContent = S.rate.toFixed(2); $('#lang').value = S.lang;
+    $('#newsWeight').value = S.newsWeight; $('#newsWeightVal').textContent = S.newsWeight; $('#newsMaxAge').value = S.newsMaxAgeH; $('#balance').value = S.balance; $('#riskPct').value = S.riskPct; $('#feePct').value = S.feePct; $('#minOrder').value = S.minOrder; }
+  function openSettings(o) { $('#settings').dataset.open = o; $('#scrim').dataset.open = o; if (o) fillSettings(); }
+  $('#settingsBtn').onclick = () => openSettings(true); $('#closeSettings').onclick = () => openSettings(false); $('#scrim').onclick = () => openSettings(false);
+  $('#newsWeight').oninput = e => $('#newsWeightVal').textContent = e.target.value; $('#rate').oninput = e => $('#rateVal').textContent = (+e.target.value).toFixed(2);
+  $('#saveSettings').onclick = () => { const oldLang = S.lang;
+    S.callMe = $('#callMe').value.trim(); S.model = $('#model').value; S.maxSearches = +$('#maxSearches').value || 6; S.briefViaApi = $('#briefViaApi').checked; S.wakeWords = $('#wakeWords').checked; S.autoSleepMin = Math.max(0, +$('#autoSleep').value || 0); S.voiceEngine = $('#voiceEngine').value; S.kVoice = $('#kVoice').value; S.voice = $('#voiceSel').value; S.rate = +$('#rate').value || 1; S.lang = $('#lang').value;
+    S.newsWeight = +$('#newsWeight').value; S.newsMaxAgeH = +$('#newsMaxAge').value || 6; S.balance = +$('#balance').value || 10; S.riskPct = +$('#riskPct').value || 2; S.feePct = +$('#feePct').value || 0; S.minOrder = +$('#minOrder').value || 5;
+    persistSettings(); openSettings(false); toast('Saved'); renderAll(); if (S.lang !== oldLang) Ears.restart(); if (mode === 'asleep') showSleepHint(); if (S.voiceEngine === 'natural') Natural.load(); };
+  function syncVoiceFields() { const nat = $('#voiceEngine').value === 'natural'; $('#kVoiceField').hidden = !nat; $('#browserVoiceField').hidden = nat;
+    $('#voiceInfo').textContent = !nat ? '' : Natural.failed ? 'Not available in this browser: ' + Natural.failed : Natural.ready ? `Loaded, running on ${Natural.device === 'webgpu' ? 'the graphics chip (fast)' : 'the processor'}.` : 'Loads after you save, or the first time she speaks.'; }
+  $('#voiceEngine').onchange = syncVoiceFields;
+  $('#voiceTest').onclick = async () => { const b = $('#voiceTest'); b.disabled = true; b.textContent = 'Loading…'; unlockAudio(); const was = { e: S.voiceEngine, r: S.rate, on: S.voiceOn };
+    S.voiceEngine = 'natural'; S.rate = +$('#rate').value || 1; S.voiceOn = true; stopSpeaking();
+    try { await speak(`Hmm, okay. [breath] So Bitcoin's holding above support, and honestly? I'd just wait for a cleaner entry${callName() ? ', ' + callName() : ''}.`, $('#kVoice').value); }
+    finally { S.voiceEngine = was.e; S.rate = was.r; S.voiceOn = was.on; b.disabled = false; b.textContent = 'Hear it'; syncVoiceFields(); } };
+  $('#testKey').onclick = async () => { const st = $('#keyStatus'); st.textContent = 'Testing…'; st.className = 'small';
+    try { const r = await api('/api/anthropic'); const j = await r.json().catch(() => ({})); st.textContent = r.ok ? 'Brain online.' : (j.error || `Rejected (${r.status}).`); st.className = r.ok ? 'small up' : 'small down'; }
+    catch (e) { st.textContent = e.message; st.className = 'small down'; } };
+
+  // ---- subtitles ----
+  const subEl = $('#subtitle'), heardEl = $('#heard');
+  function setSub(text, kind = '') { subEl.className = 'subtitle ' + kind; void subEl.offsetWidth; if (kind === '') subEl.classList.add('swap'); subEl.firstElementChild.textContent = text; }
+  function setHeard(text, live = false) { heardEl.textContent = text ? `“${text}”` : ''; heardEl.className = 'heard' + (live ? ' live' : ''); }
+  // subtitle-sized pieces: sentences, and long sentences cut at a comma or a conjunction (never inside a number like 84,765.92)
+  function splitSubs(text) { const s = String(text).replace(/[*_#`>]/g, '').replace(/\s+/g, ' ').trim(); if (!s) return [];
+    const out = []; for (let x of s.split(/(?<=[.!?]["')\]]?)\s+/)) { x = x.trim(); if (!x) continue;
+      while (x.length > 170) { let cut = -1; for (const m of x.matchAll(/(?<!\d)[,;:]\s|\s(?=(?:and|but|so|then|while|because)\s)/g)) if (m.index > 50 && m.index < 165) cut = m.index + 1;
+        if (cut < 0) cut = x.lastIndexOf(' ', 160); if (cut <= 0) break; out.push(x.slice(0, cut).trim()); x = x.slice(cut).trim(); }
+      out.push(x); } return out; }
+
+  // ---- voice out ----
+  // Two engines: "natural" (Kokoro neural voice in a worker, see #tts-worker) and the browser's own speech as the fallback.
+  // Replies can carry cues the voice performs and the subtitles hide: [pause], [breath], [sigh].
+  const synth = 'speechSynthesis' in window ? window.speechSynthesis : null; let voices = [];
+  function loadVoices() { if (!synth) return; voices = synth.getVoices().filter(v => /^en/i.test(v.lang)); if (!voices.length) voices = synth.getVoices(); }
+  if (synth) { loadVoices(); synth.onvoiceschanged = loadVoices; }
+  function fillVoices() { const sel = $('#voiceSel'); loadVoices(); sel.innerHTML = '<option value="">Automatic</option>' + voices.map(v => `<option value="${esc(v.name)}">${esc(v.name)} (${esc(v.lang)})</option>`).join(''); sel.value = S.voice || ''; }
+  function pickVoice() { if (!voices.length) return null; if (S.voice) { const v = voices.find(v => v.name === S.voice); if (v) return v; }
+    const pref = [/Google UK English Female/i, /Aria/i, /Jenny/i, /Sonia/i, /Samantha/i, /Zira/i, /Female/i, /Google US English/i, /en-GB/i, /en-US/i]; for (const p of pref) { const v = voices.find(v => p.test(v.name) || p.test(v.lang)); if (v) return v; } return voices[0]; }
+  const forSpeech = t => t.replace(/\$(\d)/g, '$1 dollars ').replace(/(\d)%/g, '$1 percent').replace(/\bUSDT\b/g, 'U S D T').replace(/\bBTC\b/g, 'Bitcoin').replace(/\bR\/R\b/gi, 'reward to risk').replace(/\bOCO\b/g, 'O C O').replace(/\bT([12])\b/g, 'target $1').replace(/\s+/g, ' ').trim();
+  const CUE_RE = /\[(pause|beat|breath|breathes|inhales|sigh|sighs|laugh|laughs|chuckle|chuckles)\]|\*(sighs?|pauses?|breathes|laughs?|chuckles?)\*/gi;
+  const stripCues = t => String(t || '').replace(CUE_RE, ' ').replace(/\s+([,.!?…])/g, '$1').replace(/\s+/g, ' ').trim();
+  function speechItems(text) { const items = [], s = String(text || ''); let last = 0;
+    const pushText = t => { for (const p of splitSubs(t)) if (/[a-z0-9]/i.test(p)) items.push({ type: 'say', text: p }); };
+    for (const m of s.matchAll(CUE_RE)) { pushText(s.slice(last, m.index)); const k = (m[1] || m[2]).toLowerCase(); items.push({ type: /sigh/.test(k) ? 'sigh' : /breath|inhale|laugh|chuckle/.test(k) ? 'breath' : 'pause' }); last = m.index + m[0].length; }
+    pushText(s.slice(last)); return items; }
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+
+  // one AudioContext for the voice, the breaths and the chime; the analyser lets the eye pulse with the real voice
+  let ac = null, analyser = null, curSrc = null, airUntil = 0; const lvBuf = new Uint8Array(256);
+  function audioCtx() { if (!ac) { ac = new (window.AudioContext || window.webkitAudioContext)(); analyser = ac.createAnalyser(); analyser.fftSize = 512; analyser.connect(ac.destination); } if (ac.state === 'suspended') ac.resume(); return ac; }
+  Eye.setLevelSource(() => { if (!analyser || (!curSrc && performance.now() > airUntil)) return null; analyser.getByteTimeDomainData(lvBuf); let s = 0; for (const v of lvBuf) { const x = (v - 128) / 128; s += x * x; } return Math.min(1, Math.sqrt(s / lvBuf.length) * 5); });
+  function playPCM(pcm, sr) { return new Promise(res => { const c = audioCtx(); const b = c.createBuffer(1, pcm.length, sr); b.copyToChannel(pcm, 0); const s = c.createBufferSource(); s.buffer = b; s.connect(analyser); curSrc = s;
+      let fin = false; const end = () => { if (fin) return; fin = true; if (curSrc === s) curSrc = null; res(); }; s.onended = end; s.start(); setTimeout(end, b.duration * 1000 + 1000); }); }
+  function stopAudio() { if (curSrc) { try { curSrc.stop(); } catch {} curSrc = null; } }
+  // breaths and sighs: shaped, filtered noise. Kokoro can say "hmm" and "um" but can't breathe, so these are made here.
+  function noise(c, sec) { const n = Math.max(1, Math.floor(c.sampleRate * sec)); const b = c.createBuffer(1, n, c.sampleRate); const d = b.getChannelData(0); let brown = 0;
+    for (let i = 0; i < n; i++) { const w = Math.random() * 2 - 1; brown = (brown + 0.02 * w) / 1.02; d[i] = 0.55 * w + 2.2 * brown; } return b; }
+  function airSound(kind) { const c = audioCtx(); let at = c.currentTime + 0.03; const start = at;
+    // [seconds, loudness, filter start Hz, filter end Hz, attack share]: a breath is one soft inhale (~18 dB under the voice);
+    // a sigh is a short inhale and a long falling exhale (~11 dB under). Levels measured against Kokoro's output.
+    const segs = kind === 'sigh' ? [[0.42, 0.55, 1100, 1500, 0.45], [1.25, 1.4, 1300, 420, 0.18]] : [[0.42, 0.5, 950, 1450, 0.45]];
+    for (const [dur, loud, f0, f1, attack] of segs) { const src = c.createBufferSource(); src.buffer = noise(c, dur);
+      const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.8; bp.frequency.setValueAtTime(f0, at); bp.frequency.exponentialRampToValueAtTime(f1, at + dur);
+      const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 280; const env = c.createGain(); const peak = AIR_GAIN * loud;
+      env.gain.setValueAtTime(0.0001, at); env.gain.linearRampToValueAtTime(peak, at + dur * attack); env.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      src.connect(bp).connect(hp).connect(env).connect(analyser); src.start(at); src.stop(at + dur + 0.05); at += dur + 0.08; }
+    airUntil = performance.now() + (at - c.currentTime) * 1000; return wait((at - start) * 1000 + 60); }
+  const AIR_GAIN = 0.32;
+
+  const Natural = (() => { let worker = null, ready = false, failed = '', device = '', loadP = null, nextId = 1; const waiters = new Map();
+    function load() { if (loadP) return loadP; loadP = new Promise(res => { try {
+        worker = new Worker(URL.createObjectURL(new Blob([$('#tts-worker').textContent], { type: 'text/javascript' })), { type: 'module' });
+        worker.onmessage = e => { const m = e.data;
+          if (m.type === 'progress') voiceStatus(m.total ? `Downloading Gull's natural voice… ${Math.round(100 * m.loaded / m.total)}% (once only)` : "Downloading Gull's natural voice…");
+          else if (m.type === 'ready') { ready = true; device = m.device; voiceStatus(''); res(true); }
+          else if (m.type === 'error') { failed = m.error; voiceStatus(''); toast('Natural voice unavailable here, using the browser voice: ' + m.error.slice(0, 80)); res(false); }
+          else if (m.type === 'audio') { const w = waiters.get(m.id); if (w) { waiters.delete(m.id); w(m); } } };
+        worker.onerror = e => { failed = e.message || 'the voice worker failed to start'; voiceStatus(''); res(false); };
+        const phone = matchMedia('(pointer:coarse)').matches; worker.postMessage({ type: 'load', device: navigator.gpu && !phone ? 'webgpu' : 'wasm' });
+      } catch (e) { failed = e.message; res(false); } }); return loadP; }
+    function synth(text, voice) { return new Promise(res => { const id = nextId++; waiters.set(id, res); worker.postMessage({ type: 'say', id, text, voice: voice || S.kVoice || 'af_heart', speed: S.rate }); }); }
+    function cancelAll() { if (worker) worker.postMessage({ type: 'skip', below: nextId }); for (const w of waiters.values()) w({ skipped: true }); waiters.clear(); }
+    return { load, synth, cancelAll, get ready() { return ready; }, get failed() { return failed; }, get device() { return device; } }; })();
+  function voiceStatus(t) { const el = $('#voiceLoad'); el.textContent = t; el.hidden = !t; }
+  const wantNatural = () => S.voiceOn && S.voiceEngine === 'natural' && !Natural.failed;
+
+  function browserSay(text) { return new Promise(res => { if (!synth) return wait(Math.max(1700, text.length * 60)).then(res);
+      const u = new SpeechSynthesisUtterance(forSpeech(text)); const v = pickVoice(); if (v) { u.voice = v; u.lang = v.lang; } u.rate = S.rate; u.pitch = 1.0;
+      let fin = false; const go = () => { if (fin) return; fin = true; clearTimeout(wd); res(); }; u.onend = go; u.onerror = go;
+      // watchdog: some browsers never fire onend (no voices installed, or a stalled engine); move on rather than hang
+      const wd = setTimeout(go, 2500 + text.length * 110 / S.rate); synth.speak(u); }); }
+
+  let speaking = false, speakToken = 0, sayChain = Promise.resolve(), cancelSpeak = null;
+  // speaks one reply piece by piece; each piece is the subtitle while it is spoken. The natural voice makes the next
+  // sentences while the current one plays. With the voice off, pieces advance at reading pace.
+  function speak(text, voice) { return new Promise(async resolve => { const my = speakToken; const items = speechItems(text); if (!items.length) return resolve();
+      speaking = true; Ears.pause(); Eye.setState('speaking'); let ended = false;
+      const done = () => { if (ended) return; ended = true; cancelSpeak = null; speaking = false; if (Eye.state === 'speaking') Eye.setState(mode === 'asleep' ? 'asleep' : 'idle'); if (!busy) Ears.resume(); resolve(); };
+      cancelSpeak = () => { stopAudio(); Natural.cancelAll(); if (synth) synth.cancel(); done(); };
+      const live = () => !ended && my === speakToken;
+      if (wantNatural() && !Natural.ready) { setSub('…', 'thinking'); await Promise.race([Natural.load(), wait(12000)]); }
+      const natural = wantNatural() && Natural.ready; const made = new Map();
+      const ahead = from => { for (let k = from, n = 0; k < items.length && n < 3; k++) if (items[k].type === 'say') { n++; if (!made.has(k)) made.set(k, Natural.synth(forSpeech(items[k].text), voice)); } };
+      for (let i = 0; i < items.length && live(); i++) { const it = items[i];
+        if (it.type === 'say') { if (!S.voiceOn) { setSub(it.text); await wait(Math.max(1700, it.text.length * 60)); continue; }
+          if (natural) { ahead(i); const r = await made.get(i); if (!live()) break; setSub(it.text);
+            if (r && r.pcm) await playPCM(r.pcm, r.sr); else if (!r || !r.skipped) await browserSay(it.text);
+            if (live() && items[i + 1] && items[i + 1].type === 'say') await wait(rand(120, 300)); } // the small gap people leave between sentences
+          else { setSub(it.text); await browserSay(it.text); } }
+        else if (S.voiceOn) { if (it.type === 'pause') await wait(rand(380, 650)); else await airSound(it.type); } }
+      done(); }); }
+  function say(text) { if (!text) return sayChain; addLine('gull', stripCues(text)); const my = speakToken; sayChain = sayChain.then(() => my === speakToken ? speak(text) : null); return sayChain; }
+  function stopSpeaking() { speakToken++; sayChain = Promise.resolve(); if (synth) synth.cancel(); if (cancelSpeak) cancelSpeak(); }
+  function unlockAudio() { try { audioCtx(); } catch {}
+    try { if (synth) { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; synth.speak(u); } } catch {} }
+  function chime(f1 = 520, f2 = 780) { try { const c = audioCtx(); const o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f1, c.currentTime); o.frequency.exponentialRampToValueAtTime(f2, c.currentTime + 0.18); g.gain.setValueAtTime(0.0001, c.currentTime); g.gain.exponentialRampToValueAtTime(0.08, c.currentTime + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.35); o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + 0.4); } catch {} }
+  const setMuteUI = () => { $('#muteBtn').setAttribute('aria-pressed', String(!S.voiceOn)); $('#muteBtn').title = S.voiceOn ? 'Voice on (subtitles always show)' : 'Voice off: subtitles only'; };
+  $('#muteBtn').onclick = () => { S.voiceOn = !S.voiceOn; persistSettings(); setMuteUI(); if (!S.voiceOn) { if (synth) synth.cancel(); stopAudio(); } toast(S.voiceOn ? 'Voice on' : 'Voice off: subtitles only'); };
+  setMuteUI();
+
+  // ---- voice in: one recognizer, always on while the mic is on; paused while Gull speaks so she does not hear herself ----
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const Ears = (() => { let rec = null, want = false, paused = false, running = false, blocked = false, fails = 0, onHear = () => {}, onStatus = () => {};
+    function begin() { if (!SR || !want || paused || rec) return; const r = new SR(); r.lang = S.lang; r.continuous = true; r.interimResults = true; r.maxAlternatives = 3;
+      r.onstart = () => { running = true; onStatus(); };
+      r.onresult = e => { fails = 0; for (let i = e.resultIndex; i < e.results.length; i++) { const res = e.results[i]; const alts = Array.from(res, a => a.transcript.trim()).filter(Boolean); if (alts.length) onHear(alts, res.isFinal); } };
+      r.onerror = e => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { blocked = true; want = false; } else if (e.error !== 'no-speech' && e.error !== 'aborted') fails++; onStatus(); };
+      r.onend = () => { running = false; if (rec === r) rec = null; onStatus(); if (want && !paused) setTimeout(begin, fails ? Math.min(15000, 600 * 2 ** fails) : 150); };
+      rec = r; try { r.start(); } catch { rec = null; setTimeout(begin, 1000); } }
+    const abort = () => { if (rec) try { rec.abort(); } catch {} };
+    return { supported: !!SR, get on() { return want; }, get running() { return running; }, get blocked() { return blocked; },
+      hear(f) { onHear = f; }, status(f) { onStatus = f; },
+      start() { blocked = false; want = true; paused = false; begin(); onStatus(); }, stop() { want = false; abort(); onStatus(); },
+      pause() { paused = true; abort(); }, resume() { if (!paused) return; paused = false; begin(); }, restart() { abort(); } }; })();
+  function updateMicUI() { const b = $('#micBtn'); const st = !Ears.supported ? 'unsupported' : Ears.blocked ? 'blocked' : Ears.on ? 'on' : 'off'; b.dataset.state = st;
+    b.title = { unsupported: 'This browser cannot listen (use Chrome or Edge). Type instead.', blocked: 'Microphone blocked. Allow it in the site settings, then tap here.', on: 'Listening (tap to turn the microphone off)', off: 'Microphone off (tap to turn on)' }[st];
+    if (mode === 'asleep') showSleepHint(); }
+  Ears.status(updateMicUI);
+  $('#micBtn').onclick = () => { if (!Ears.supported) { toast('Voice input needs Chrome or Edge. You can type instead.'); openType(true); return; } if (Ears.on) { Ears.stop(); S.micOn = false; toast('Microphone off'); } else { unlockAudio(); Ears.start(); S.micOn = true; toast('Microphone on'); } persistSettings(); };
+
+  // ---- wake and sleep words ----
+  const GULL_RE = '(?:gull|gul|gulls|gal|goal|gold|girl)';
+  const WAKE = [
+    { kind: 'home', re: /\b(?:i'?m|i am|im)\s+(?:home|hom|hum)\b/ },
+    { kind: 'back', re: /\b(?:i'?m|i am|im)\s+back\b/ },
+    { kind: 'wakey', re: /\b(?:wak(?:e|ey|ie|y|ee)|wacky|whacky|walkie)[\s,-]+(?:wak(?:e|ey|ie|y|ee)|wacky|whacky|walkie)\b/ },
+    { kind: 'name', re: new RegExp(`\\b(?:hey|hi|hello|ok|okay|wake up)[\\s,]+${GULL_RE}\\b`) } ];
+  const SLEEP_RE = new RegExp(`\\b(?:go to sleep|goodnight|good night|sleep now|go rest|that'?s all(?: for (?:now|today))?|bye(?: bye)? ${GULL_RE}|see you later ${GULL_RE})\\b`);
+  const norm = s => s.toLowerCase().replace(/[’`]/g, "'").replace(/\s+/g, ' ').trim();
+  function matchWake(alts) { for (const a of alts) { const t = norm(a); for (const w of WAKE) { const m = t.match(w.re); if (m) {
+      const rest = t.slice(m.index + m[0].length).replace(new RegExp(`^[\\s,.!?-]*(?:${GULL_RE}\\b)?[\\s,.!?-]*`), '').trim(); return { kind: w.kind, rest }; } } } return null; }
+
+  let mode = 'asleep', busy = false, lastActivity = Date.now();
+  function showSleepHint() { if (mode !== 'asleep') return; setHeard('');
+    const how = !Ears.supported ? 'This browser cannot listen. Tap the eye to wake Gull, then type.' : Ears.blocked ? 'The microphone is blocked. Allow it for this site, or tap the eye.' : !Ears.on ? 'The microphone is off. Tap the eye to wake Gull, or turn the mic on.' : !S.wakeWords ? 'Tap the eye to wake Gull.' : 'Say “wakey wakey Gull”, “hey, I’m home” or “hey, I’m back”. Or tap the eye.';
+    setSub(how, 'hint'); }
+  Ears.hear((alts, final) => {
+    if (mode === 'asleep') { if (final && S.wakeWords) { const w = matchWake(alts); if (w) wakeUp(w.kind, w.rest); } return; }
+    if (busy || speaking) return;
+    lastActivity = Date.now();
+    if (!final) { setHeard(alts[0], true); if (Eye.state === 'idle') Eye.setState('listening'); return; }
+    if (Eye.state === 'listening') Eye.setState('idle'); send(alts[0]); });
+
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  // the built-in lines (greeting, goodbye) are written the way she talks: small fillers, a breath, a beat
+  function greeting(kind) { const n = callName(); const h = new Date().getHours(); const tod = h < 5 ? "You're up late" : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; const you = n ? ', ' + n : '';
+    const open = {
+      home: pick([`Oh, hey${you}. Welcome home.`, `Welcome home${you}. [breath]`, `Hey, there you are${you}. Welcome home.`]),
+      back: pick([`Welcome back${you}.`, `Oh, hey, you're back${you}.`, `Mm, welcome back${you}. [breath]`]),
+      wakey: pick([`Mm... [breath] okay, okay, I'm up. ${tod}${you}.`, `Hmm? [pause] Oh, I'm up, I'm up. ${tod}${you}.`, `[sigh] Alright, I'm awake. ${tod}${you}.`]),
+      name: pick([`Mm-hmm, I'm here. ${tod}${you}.`, `Yeah, I'm here${you}.`]) }[kind] || `${tod}${you}.`;
+    return `${open} ${marketOneLiner()}`; }
+  function marketOneLiner() { const t = state.ta, v = state.verdict; if (!t) return "Hmm, I couldn't reach Binance yet, so I don't have numbers. I'll keep trying.";
+    const px = state.price || t.d15.price; const word = { 'BUY': 'actually says buy', 'WATCH FOR ENTRY': 'says watch for an entry', 'WAIT': 'says just wait', 'HOLD USDT': 'says stay in USDT', 'SELL IF HOLDING': 'says stay out' }[v.action] || 'says ' + v.action.toLowerCase();
+    const move = state.chg == null ? '' : Math.abs(state.chg) < 0.3 ? ', pretty much flat on the day' : `, ${state.chg >= 0 ? 'up' : 'down'} ${Math.abs(state.chg).toFixed(1)} percent on the day`;
+    return `So, Bitcoin's at ${fmt0(px)}${move}. The chart reads ${t.tier.toLowerCase()}, and the desk ${word}. [pause] ${pick(['What do you want to know?', 'What are we looking at?', "What's on your mind?"])}`; }
+  async function wakeUp(kind = 'tap', rest = '') { if (mode === 'awake') return; mode = 'awake'; lastActivity = Date.now(); Eye.wake(); Eye.setState('idle'); chime(); setHeard('');
+    if (!state.ta) { setSub('Loading the market…', 'thinking'); await refreshData(); }
+    stopSpeaking(); await say(greeting(kind));
+    if (rest && rest.split(/\s+/).filter(Boolean).length >= 2) return send(rest);
+    if (S.briefViaApi && state.ta) return send('Give me the opening market briefing: the scenario as it is across the daily, 4-hour and 15-minute, the last week and month, the desk verdict and why, and whether the news needs a scan. Under 120 words. Do not greet me again.', { hidden: true }); }
+  async function goSleep(reason) { if (mode === 'asleep') return; closeStage(); openType(false); const you = callName() ? ', ' + callName() : '';
+    await say(reason === 'idle' ? "[sigh] It's gone quiet, so... I'll rest for a bit. Say wakey wakey Gull when you need me." : pick([`Okay${you}. [breath] I'll keep an ear open. Just say wakey wakey Gull.`, `Alright, night${you}. I'll be right here if you need me.`]));
+    mode = 'asleep'; Eye.sleep(); Eye.setState('asleep'); setTimeout(showSleepHint, 1500); }
+  setInterval(() => { if (mode === 'awake' && !busy && !speaking && S.autoSleepMin > 0 && Date.now() - lastActivity > S.autoSleepMin * 60000) goSleep('idle'); }, 15000);
+  $('#eyeSide').addEventListener('click', e => { if (e.target.closest('.dock,.typebar,.gate')) return; if (mode === 'asleep') { unlockAudio(); wakeUp('tap'); } else if (speaking) stopSpeaking(); });
+
+  // ---- typing ----
+  function openType(o) { $('#typeBar').hidden = !o; $('#eyeSide').dataset.typing = String(o); $('#kbdBtn').setAttribute('aria-pressed', String(o)); if (o) setTimeout(() => $('#ask').focus(), 30); }
+  $('#kbdBtn').onclick = () => openType($('#typeBar').hidden);
+  $('#typeBar').onsubmit = e => { e.preventDefault(); const v = $('#ask').value; $('#ask').value = ''; unlockAudio(); send(v); };
+  $('#ask').addEventListener('input', () => { lastActivity = Date.now(); });
+  document.addEventListener('keydown', e => { const typing = e.target.matches('input,select,textarea');
+    if (e.key === 'Escape') { if ($('#settings').dataset.open === 'true') openSettings(false); else if (typing && !$('#typeBar').hidden) openType(false); else if (speaking) stopSpeaking(); else closeStage(); return; }
+    if (!typing && e.key === '/' && !$('#app').hidden) { e.preventDefault(); openType(true); } });
+
+  // ---- data ----
+  const BASES = ['https://data-api.binance.vision', 'https://api.binance.com', 'https://api1.binance.com'];
+  async function bget(path) { let err; for (const b of BASES) { try { const r = await fetch(b + path, { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); } catch (e) { err = e; } } throw err; }
+  const parseK = rows => rows.map(r => ({ t: r[0] / 1000, o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[5], closeT: r[6] }));
+  const state = { k: {}, ta: null, lv: null, plan: null, ctx: null, book: null, fng: null, news: store.get('gull.news', null), analysis: null, verdict: null, tf: '15m', lastData: 0, price: null, chg: null };
+  let journal = [];
+  async function refreshData() { try {
+      const [k15, k1h, k4h, k1d] = await Promise.all(['15m', '1h', '4h', '1d'].map(i => bget(`/api/v3/klines?symbol=BTCUSDT&interval=${i}&limit=300`).then(parseK)));
+      state.k = { '15m': k15, '1h': k1h, '4h': k4h, '1d': k1d }; state.lastData = Date.now(); state.ctx = Engine.context(k1d);
+      await refreshBook(); computeTA(); renderAll(); setStatus('live'); return true;
+    } catch (e) { setStatus('err', 'Binance data failed: ' + e.message); return false; } }
+  async function refreshBook() { try { const d = await bget('/api/v3/depth?symbol=BTCUSDT&limit=1000'); const bids = d.bids.map(([p, q]) => [+p, +q]), asks = d.asks.map(([p, q]) => [+p, +q]); if (!bids.length || !asks.length) return;
+      const mid = (bids[0][0] + asks[0][0]) / 2; const reach = Math.min(100 * (1 - bids[bids.length - 1][0] / mid), 100 * (asks[asks.length - 1][0] / mid - 1)); const within = Math.max(0.05, Math.min(1, reach));
+      state.book = { ...Engine.bookImbalance(bids, asks, within), within, ts: Date.now() }; } catch {} }
+  async function refreshFng() { try { const r = await fetch('https://api.alternative.me/fng/?limit=2', { cache: 'no-store' }); const j = await r.json(); const d = j.data || [];
+      if (d[0]) state.fng = { value: +d[0].value, label: d[0].value_classification, prev: d[1] ? +d[1].value : null, ts: Date.now() }; renderMarket(); } catch {} }
+  const closedK = k => k.slice(0, -1);
+  function computeTA() { const d15 = Engine.analyze(closedK(state.k['15m'])), d4 = Engine.analyze(closedK(state.k['4h'])), d1 = Engine.analyze(closedK(state.k['1d']));
+    const reg = Engine.scoreRegime(d1), mom = Engine.scoreMomentum(d4, reg.label), trg = Engine.scoreTrigger(d15); const comp = Engine.composite(reg, mom, trg);
+    state.ta = { d15, d4, d1, reg, mom, trg, score: comp.score, counterRegime: comp.counterRegime, tier: Engine.tier(comp.score) }; recompute(); }
+  function recompute() { if (!state.ta) return; state.lv = Engine.levels(state.ta.d15, state.ta.d4, state.ta.d1); state.plan = Engine.plan(state.ta.d15, state.lv, S);
+    state.verdict = Engine.combine({ score: state.ta.score, counterRegime: state.ta.counterRegime }, state.news, S, state.plan.rr, Date.now()); Eye.setMood(state.verdict.score / 6); }
+  const newsFresh = () => state.news && (Date.now() - state.news.scannedAt) / 36e5 <= S.newsMaxAgeH;
+
+  // ---- live price ----
+  let ws, wsTimer, wsOk = false, polling = false, lastPx = null;
+  function setStatus(kind, text) { const d = $('#dot'); d.className = 'dot ' + (kind === 'live' ? 'live' : kind === 'err' ? 'err' : ''); $('#statusText').textContent = text || (kind === 'live' ? 'Live · ' + new Date(state.lastData || Date.now()).toLocaleTimeString() : 'Connecting…'); }
+  function setPrice(px, open) { state.price = px; const el = $('#price'); el.textContent = fmtPx(px); el.className = 'px num ' + (lastPx == null ? '' : px > lastPx ? 'up' : px < lastPx ? 'down' : ''); lastPx = px;
+    if (open) { const ch = 100 * (px - open) / open; state.chg = ch; const c = $('#chg'); c.textContent = `24h ${ch >= 0 ? '+' : ''}${ch.toFixed(2)}%`; c.className = 'chg num ' + (ch >= 0 ? 'up' : 'down'); } }
+  function connectWS(i = 0) { const urls = ['wss://data-stream.binance.vision/ws/btcusdt@miniTicker', 'wss://stream.binance.com:9443/ws/btcusdt@miniTicker'];
+    if (i >= urls.length) { if (!polling) { polling = true; pollTicker(); } clearTimeout(wsTimer); wsTimer = setTimeout(() => connectWS(0), 30000); return; }
+    try { ws = new WebSocket(urls[i]); } catch { connectWS(i + 1); return; }
+    ws.onopen = () => { wsOk = true; }; ws.onmessage = ev => { try { const m = JSON.parse(ev.data); setPrice(+m.c, +m.o); } catch {} }; ws.onerror = () => { try { ws.close(); } catch {} };
+    ws.onclose = () => { const was = wsOk; wsOk = false; clearTimeout(wsTimer); wsTimer = setTimeout(() => connectWS(was ? 0 : i + 1), was ? 3000 : 1500); }; }
+  async function pollTicker() { if (!wsOk) { try { const t = await bget('/api/v3/ticker/24hr?symbol=BTCUSDT'); setPrice(+t.lastPrice, +t.openPrice); } catch {} } setTimeout(pollTicker, 10000); }
+
+  // ---- stage: the eye moves left, the panel opens right ----
+  let currentPane = 'market';
+  function showPane(name) { if (!document.querySelector(`.pane[data-pane="${name}"]`)) name = 'market'; currentPane = name;
+    for (const b of $('#tabs').children) b.setAttribute('aria-selected', String(b.dataset.pane === name)); for (const p of document.querySelectorAll('.pane')) p.hidden = p.dataset.pane !== name;
+    $('#tabs').querySelector(`[data-pane="${name}"]`).scrollIntoView({ block: 'nearest', inline: 'nearest' }); $('.stage-body').scrollTop = 0;
+    if (name === 'chart' && chart) setTimeout(() => chart.timeScale().fitContent(), 520); if (name === 'transcript') renderTranscript(); }
+  const narrow = matchMedia('(max-width:820px)');
+  const syncEye = () => Eye.setCompact(stageOpen() && narrow.matches);
+  narrow.addEventListener('change', syncEye);
+  function openStage(name) { showPane(name || currentPane); $('#app').dataset.split = 'true'; $('#stage').inert = false; $('#panelsBtn').setAttribute('aria-pressed', 'true'); syncEye(); }
+  function closeStage() { $('#app').dataset.split = 'false'; $('#stage').inert = true; $('#panelsBtn').setAttribute('aria-pressed', 'false'); syncEye(); }
+  const stageOpen = () => $('#app').dataset.split === 'true';
+  $('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) showPane(b.dataset.pane); };
+  $('#closeStage').onclick = closeStage; $('#panelsBtn').onclick = () => stageOpen() ? closeStage() : openStage();
+
+  // ---- chart ----
+  let chart, candleSeries, emaSeries = {}, priceLines = [];
+  const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  function chartColors() { return { text: cssVar('--muted'), grid: cssVar('--line'), border: cssVar('--line-strong'), up: cssVar('--up'), down: cssVar('--down'), eye: cssVar('--eye') }; }
+  function initChart() { if (chart) return; const el = $('#chart'); if (!window.LightweightCharts) { $('#chartFallback').style.display = 'flex'; $('#chartFallback').textContent = 'The chart library did not load (no internet or blocked CDN). Everything else works.'; return; }
+    const c = chartColors(); chart = LightweightCharts.createChart(el, { autoSize: true, layout: { background: { type: 'solid', color: 'transparent' }, textColor: c.text, fontFamily: cssVar('--font-mono') || 'monospace' },
+      grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } }, rightPriceScale: { borderColor: c.border }, timeScale: { borderColor: c.border, timeVisible: true, secondsVisible: false }, crosshair: { mode: 0 } });
+    candleSeries = chart.addCandlestickSeries({ upColor: c.up, downColor: c.down, borderVisible: false, wickUpColor: c.up, wickDownColor: c.down });
+    emaSeries.e21 = chart.addLineSeries({ color: '#f2b531', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }); emaSeries.e50 = chart.addLineSeries({ color: '#5b9cf6', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }); emaSeries.e200 = chart.addLineSeries({ color: '#b57edc', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }); }
+  // the lines on the chart follow the latest trade analysis when it is recent, otherwise the market plan
+  const activePlan = () => state.analysis && Date.now() - state.analysis.ts < 30 * 60000 && state.analysis.plan ? state.analysis.plan : state.plan;
+  function drawChart() { if (!chart || !state.k[state.tf]) return; const k = state.k[state.tf]; candleSeries.setData(k.map(x => ({ time: x.t, open: x.o, high: x.h, low: x.l, close: x.c })));
+    const cl = k.map(x => x.c); const series = { e21: Engine.ema(cl, 21), e50: Engine.ema(cl, 50), e200: Engine.ema(cl, 200) };
+    for (const key of Object.keys(series)) emaSeries[key].setData(series[key].map((v, i) => v == null ? null : { time: k[i].t, value: v }).filter(Boolean));
+    for (const pl of priceLines) candleSeries.removePriceLine(pl); priceLines = []; const p = activePlan();
+    if (p) { const c = chartColors(); const ls = LightweightCharts.LineStyle; const line = (price, color, title) => priceLines.push(candleSeries.createPriceLine({ price, color, lineWidth: 1, lineStyle: ls.Dashed, axisLabelVisible: true, title }));
+      line(p.stop, c.down, 'stop'); if (p.target) line(p.target.p, c.up, 'T1'); if (p.target2) line(p.target2.p, c.up, 'T2'); if (p.isLimit) line(p.entry, c.eye, 'limit buy'); }
+    if (!drawChart._fit) { chart.timeScale().fitContent(); chart.timeScale().applyOptions({ rightOffset: 4 }); drawChart._fit = true; }
+    $('#chartStamp').textContent = `${state.tf} · ${k.length} candles · ${new Date(state.lastData).toLocaleTimeString()}`; }
+  function setTf(tf) { if (!['15m', '1h', '4h', '1d'].includes(tf)) tf = '15m'; state.tf = tf; for (const x of $('#tfSeg').children) x.setAttribute('aria-pressed', String(x.dataset.tf === tf)); drawChart._fit = false; drawChart(); }
+  $('#tfSeg').onclick = e => { const b = e.target.closest('button'); if (b) setTf(b.dataset.tf); };
+
+  // ---- render: market overview (past / present / ahead) ----
+  function renderMarket() { const t = state.ta, c = state.ctx; if (!t || !c) return; const v = state.verdict, b = state.book, f = state.fng, ses = Engine.session(new Date()), px = state.price || t.d15.price, n = state.news;
+    $('#mktAge').textContent = 'as of ' + new Date(state.lastData).toLocaleTimeString(); $('#mktAge').className = 'chip eye';
+    const word = s => s >= 2 ? 'strong' : s > 0 ? 'positive' : s <= -2 ? 'weak' : s < 0 ? 'soft' : 'flat';
+    const atr = t.d1.atr; const nextCat = n && newsFresh() && (n.catalysts || [])[0];
+    $('#mktBody').innerHTML = `<div class="verdict"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div class="big ${v.level}">${esc(v.action)}</div><span class="chip ${t.score >= 1.5 ? 'up' : t.score <= -1.5 ? 'down' : ''}">chart ${esc(t.tier)} · ${t.score >= 0 ? '+' : ''}${t.score}</span></div>
+        <div class="small muted">${esc(v.reasons[0] || 'Chart and news agree; no gates tripped.')}</div></div>
+      <h3 class="sec">Past · where we came from</h3><div class="grid">
+        ${tile('7 days', pct(c.ret7), '', sgn(c.ret7))}${tile('30 days', pct(c.ret30), '', sgn(c.ret30))}${tile('90 days', pct(c.ret90), '', sgn(c.ret90))}${tile('200 days', pct(c.ret200), '', sgn(c.ret200))}
+        ${tile(`${c.days}-day range`, `${fmt0(c.lo)} – ${fmt0(c.hi)}`, `price sits at ${c.rangePos.toFixed(0)}% of it`)}${tile('From the high', pct(c.fromHigh), `${pct(c.fromLow)} from the low`, sgn(c.fromHigh))}
+        ${tile('Daily trend', t.reg.label, `score ${t.reg.score}/4`, 'txt ' + sgn(t.reg.score))}${tile('Structure (40 days)', esc(c.structure.split(' (')[0]), esc((c.structure.match(/\((.*)\)/) || [])[1] || ''), 'txt')}</div>
+      <h3 class="sec">Present · what's happening now</h3><div class="grid">
+        ${tile('Price', fmtPx(px), state.chg == null ? '' : `24h ${pct(state.chg, 2)}`, sgn(state.chg))}${tile('4H momentum', word(t.mom.score), `score ${t.mom.score}/4 · RSI ${t.d4.rsi == null ? '—' : t.d4.rsi.toFixed(0)}`, 'txt ' + sgn(t.mom.score))}
+        ${tile('15m trigger', t.trg.score > 0 ? 'buy trigger' : t.trg.score < 0 ? 'sell signal' : 'none', `score ${t.trg.score}/4 · RSI ${t.d15.rsi == null ? '—' : t.d15.rsi.toFixed(0)}`, 'txt ' + sgn(t.trg.score))}
+        ${tile('Volume, 7d vs 30d', c.volRatio == null ? '—' : `${c.volRatio.toFixed(2)}×`, c.volRatio == null ? '' : c.volRatio > 1.15 ? 'rising participation' : c.volRatio < 0.85 ? 'drying up' : 'normal')}
+        ${tile('Order book', b ? `${b.imbalance >= 0 ? '+' : ''}${(b.imbalance * 100).toFixed(0)}%` : '—', b ? `${b.imbalance > 0.1 ? 'bids heavier' : b.imbalance < -0.1 ? 'asks heavier' : 'balanced'} within ${b.within.toFixed(2)}%` : 'loading', b ? sgn(b.imbalance) : '')}
+        ${tile('Fear & Greed', f ? f.value : '—', f ? `${esc(f.label)}${f.prev != null ? ` · yesterday ${f.prev}` : ''}` : 'unavailable', f ? (f.value >= 60 ? 'up' : f.value <= 40 ? 'down' : '') : '')}
+        ${tile('Volatility', c.atrPct == null ? '—' : `${c.atrPct.toFixed(1)}%/day`, `30d realized ${c.rv30.toFixed(0)}% a year`)}${tile('Session', esc(ses.name), esc(ses.note), 'txt')}</div>
+      <h3 class="sec">Ahead · what to expect</h3><div class="grid">
+        ${tile('Typical 24h range', atr ? `${fmt0(px - atr)} – ${fmt0(px + atr)}` : '—', 'price ± one daily ATR')}${tile('Next resistance', state.lv.resistances[0] ? fmt0(state.lv.resistances[0].p) : '—', state.lv.resistances[0] ? esc(state.lv.resistances[0].n) : '', 'down')}
+        ${tile('Next support', state.lv.supports[0] ? fmt0(state.lv.supports[0].p) : '—', state.lv.supports[0] ? esc(state.lv.supports[0].n) : '', 'up')}
+        ${tile('News', n ? `${n.sentiment > 0 ? '+' : ''}${n.sentiment} / 5` : 'no scan', n ? `${newsFresh() ? '' : 'stale · '}event risk ${esc(n.event_risk)} · ${ago(n.scannedAt)}` : 'ask Gull for the news', n ? sgn(n.sentiment) : '')}
+        ${nextCat ? tile('Next event', esc(nextCat.when || ''), esc(nextCat.what), 'txt') : ''}</div>`; }
+
+  // ---- render: trade analysis ----
+  const VERDICT = { buy_now: ['BUY NOW', 'strong'], buy_limit: ['BUY ON LIMIT', 'lean-long'], wait: ['WAIT', 'neutral'], stay_in_usdt: ['STAY IN USDT', 'lean-bear'], sell_if_holding: ['SELL IF HOLDING', 'strong-bear'] };
+  const isBuy = v => v === 'buy_now' || v === 'buy_limit';
+  const btcQty = p => Math.floor(p.notional / p.entry * 1e5) / 1e5;
+  function deskChecks(p) { const t = state.ta, n = state.news, fresh = newsFresh(); return [
+      { item: `Reward/risk to target 1 is at least 1.5 (${p.rr == null ? 'no target' : p.rr.toFixed(2)})`, ok: p.rr != null && p.rr >= 1.5, gate: true },
+      { item: fresh ? `News scan is fresh (${ago(n.scannedAt)})` : 'News scan is fresh', ok: !!fresh, gate: false },
+      { item: `No high event risk ahead${fresh ? ` (news says ${n.event_risk})` : ''}`, ok: !(fresh && n.event_risk === 'high'), gate: true },
+      { item: `With the daily trend (${t.reg.label})`, ok: t.reg.label !== 'bearish', gate: false },
+      { item: '15m trigger does not fight the daily trend', ok: !t.counterRegime, gate: false },
+      { item: `Position is above Binance's ~$${S.minOrder} minimum`, ok: !p.tooSmall, gate: true },
+      { item: `Loss at the stop stays near your ${S.riskPct}% risk (${p.lossPctBalance.toFixed(2)}%)`, ok: p.lossPctBalance <= S.riskPct * 1.15, gate: false },
+      { item: 'Target 1 clears the fees comfortably', ok: !!p.target && p.target.p > p.breakeven * 1.003, gate: false } ]; }
+  function planText(p) { return `entry ${fmt0(p.entry)} (${p.isLimit ? 'limit buy' : 'market buy'}), stop ${fmt0(p.stop)} (${p.stopPct.toFixed(2)}% below entry), target 1 ${p.target ? `${fmt0(p.target.p)} (+${(100 * (p.target.p - p.entry) / p.entry).toFixed(2)}%)` : 'none'}, target 2 ${p.target2 ? `${fmt0(p.target2.p)} (+${(100 * (p.target2.p - p.entry) / p.entry).toFixed(2)}%)` : 'none'}, reward/risk ${p.rr == null ? 'n/a' : p.rr.toFixed(2)} to target 1${p.rr2 != null ? ` and ${p.rr2.toFixed(2)} to target 2` : ''}, position ${fmt(p.notional)} USDT (${btcQty(p)} BTC), loss at the stop ${fmt(p.lossAtStop)} USDT (${p.lossPctBalance.toFixed(2)}% of balance), gain at target 1 ${p.gainAtTarget == null ? 'n/a' : fmt(p.gainAtTarget) + ' USDT'}${p.gainAtTarget2 != null ? `, gain at target 2 ${fmt(p.gainAtTarget2)} USDT` : ''}, break-even ${fmt0(p.breakeven)} after fees`; }
+  function renderAnalysis() { const a = state.analysis; if (!a || !a.plan) return; const p = a.plan; const [label, lvl] = VERDICT[a.verdict] || [a.verdict, 'neutral']; const buy = isBuy(a.verdict);
+    const conv = Array.from({ length: 5 }, (_, i) => `<i class="${i < a.conviction ? 'on' : ''}"></i>`).join('');
+    const scen = (a.scenarios || []).filter(s => s && s.name); const tot = scen.reduce((x, s) => x + (+s.probability || 0), 0) || 1;
+    const checks = deskChecks(p);
+    const steps = buy ? `<ol class="steps"><li>Binance → Spot → BTC/USDT → <b>${p.isLimit ? 'Limit' : 'Market'}</b> buy${p.isLimit ? ` at <b>${fmtPx(p.entry)}</b>` : ''}: <b>${btcQty(p)} BTC</b> (≈ <b>${fmt(p.notional)} USDT</b>).</li>
+        <li>Once filled: Sell → <b>OCO</b>. Take-profit limit <b>${p.target ? fmtPx(p.target.p) : '—'}</b>; stop <b>${fmtPx(p.stop)}</b> with the stop-limit a little under it, at <b>${fmtPx(p.stop * 0.998)}</b>; amount = the BTC you bought (after the fee).</li>
+        ${p.target2 ? `<li>Optional: sell half at target 1, move the stop on the rest to break-even <b>${fmtPx(p.breakeven)}</b>, and aim the rest at target 2 <b>${fmtPx(p.target2.p)}</b>.</li>` : ''}
+        <li>If price closes under <b>${fmtPx(p.inval)}</b> before the stop is hit, the idea is broken: get out, don't wait.</li></ol>` : '';
+    $('#analysisBody').innerHTML = `<div class="an-head"><div class="row"><span class="big ${lvl}">${label}</span><span class="conv">conviction ${conv}</span><span class="chip">${fmtTime(a.ts)} · BTC ${fmt0(a.price)}</span></div>
+        <div class="headline">${esc(a.headline)}</div>
+        ${a.gates && a.gates.length ? `<div class="note">Gull suggested ${esc(VERDICT[a.asked] ? VERDICT[a.asked][0] : a.asked)}, but the desk rules hold it at WAIT: ${esc(a.gates.join(' '))}</div>` : ''}${a.note ? `<div class="note">${esc(a.note)}</div>` : ''}</div>
+      <h3 class="sec">${buy ? 'The trade' : 'The setup she would need (at market, for reference)'}</h3><div class="grid">
+        ${tile(p.isLimit ? 'Entry (limit)' : 'Entry (market)', fmtPx(p.entry), p.isLimit ? `market is ${fmtPx(p.market)}` : '')}${tile('Stop', fmtPx(p.stop), `−${p.stopPct.toFixed(2)}% · idea breaks under ${fmt0(p.inval)}`, 'down')}
+        ${tile('Target 1', p.target ? fmtPx(p.target.p) : '—', p.target ? `+${(100 * (p.target.p - p.entry) / p.entry).toFixed(2)}% · ${esc(p.target.n)}` : 'no level above', 'up')}${tile('Target 2', p.target2 ? fmtPx(p.target2.p) : '—', p.target2 ? `+${(100 * (p.target2.p - p.entry) / p.entry).toFixed(2)}% · ${esc(p.target2.n)}` : '', 'up')}
+        ${tile('Reward / risk', p.rr == null ? '—' : `${p.rr.toFixed(2)}${p.rr2 != null ? ` / ${p.rr2.toFixed(2)}` : ''}`, 'to target 1 / target 2', p.rr != null && p.rr >= 1.5 ? 'up' : 'warn')}${tile('Position', fmt(p.notional) + ' USDT', `${btcQty(p)} BTC · risk rule ${S.riskPct}% of ${fmt(S.balance)}`)}
+        ${tile('If the stop hits', '−' + fmt(p.lossAtStop) + ' USDT', `${p.lossPctBalance.toFixed(2)}% of balance, fees included`, 'down')}${tile('If target 1 hits', p.gainAtTarget == null ? '—' : (p.gainAtTarget >= 0 ? '+' : '−') + fmt(Math.abs(p.gainAtTarget)) + ' USDT', `break-even ${fmt0(p.breakeven)} after fees`, 'up')}</div>
+      ${steps ? `<h3 class="sec">How to place it on Binance</h3>${steps}` : ''}
+      ${p.notes.length ? `<div style="display:grid;gap:8px;margin-top:10px">${p.notes.map(x => `<div class="note">${esc(x)}</div>`).join('')}</div>` : ''}
+      <h3 class="sec">Past · present · future</h3><div class="three-col"><div class="case"><h3>Past</h3>${esc(a.past)}</div><div class="case"><h3>Present</h3>${esc(a.present)}</div><div class="case"><h3>Future</h3>${esc(a.future)}</div></div>
+      ${scen.length ? `<h3 class="sec">Scenarios</h3><div class="scen">${scen.map(s => `<b class="${esc(s.name)}" style="width:${(100 * (+s.probability || 0) / tot).toFixed(1)}%"></b>`).join('')}</div>
+        <ul class="list">${scen.map(s => `<li><span class="imp ${s.name === 'bull' ? 'up' : s.name === 'bear' ? 'down' : 'muted'}">${+s.probability || 0}%</span><span><b style="text-transform:capitalize">${esc(s.name)}.</b> ${esc(s.path)}</span></li>`).join('')}</ul>` : ''}
+      <h3 class="sec">News and events</h3><div class="case">${esc(a.news_impact)}</div>
+      <div class="two-col" style="margin-top:12px"><div class="case"><h3>Desk rules</h3><ul class="checks">${checks.map(c => `<li><span class="${c.ok ? 'ok' : 'no'}">${c.ok ? '✓' : '✕'}</span><span>${esc(c.item)}${!c.ok && c.gate ? ' <b class="warn">(blocks a buy)</b>' : ''}</span></li>`).join('')}</ul></div>
+        <div class="case"><h3>Risks</h3><ul class="plain">${(a.risks || []).map(r => `<li>${esc(r)}</li>`).join('') || '<li>none listed</li>'}</ul></div></div>
+      <div class="two-col" style="margin-top:12px"><div class="case"><h3>${buy ? 'Managing it' : 'What would turn this into a trade'}</h3>${esc(a.trigger_to_act || '')}</div><div class="case"><h3>What would change her mind</h3>${esc(a.invalidation || `A close under ${fmt0(p.inval)}.`)}</div></div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">${buy ? '<button class="btn sm primary" id="logAnalysis" type="button">Log this trade to the paper journal</button>' : ''}</div>
+      <div class="disclaimer">Gull's judgement plus the desk engine's numbers; not financial advice. The numbers on this page were computed from live Binance data at ${new Date(a.ts).toLocaleTimeString()}; they go stale as price moves.</div>`;
+    const lb = $('#logAnalysis'); if (lb) lb.onclick = () => { const tr = logPlan(a.headline, p); if (tr) { toast('Logged to the journal.'); openStage('journal'); } }; }
+
+  // ---- render: plan, score, news, journal ----
+  const scoreBar = (score, max) => { const pc = 50 + 50 * score / max; const left = Math.min(50, pc), width = Math.abs(pc - 50); return `<div class="bar"><b class="${score > 0 ? 'up' : score < 0 ? 'down' : ''}" style="left:${left}%;width:${width}%"></b></div>`; };
+  function renderTA() { const t = state.ta; if (!t) return; $('#taTier').textContent = `${t.tier} · ${t.score >= 0 ? '+' : ''}${t.score}`; $('#taTier').className = 'chip ' + (t.score >= 1.5 ? 'up' : t.score <= -1.5 ? 'down' : '');
+    const card = (name, role, sc, notes, extra) => `<div class="tf"><div class="head"><span><b>${name}</b> <span class="role">${role}</span></span><span class="sc ${sc.score > 0 ? 'up' : sc.score < 0 ? 'down' : 'muted'}">${sc.score > 0 ? '+' : ''}${sc.score}</span></div>${scoreBar(sc.score, 4)}<ul>${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul><div class="small faint mono">${extra}</div></div>`;
+    const ex = d => `close ${fmtPx(d.price)} · ATR ${fmtPx(d.atr)}`;
+    $('#tfgrid').innerHTML = card('1D', 'regime ×3', t.reg, t.reg.notes, ex(t.d1) + (t.reg.label !== 'neutral' ? ` · ${t.reg.label}` : '')) + card('4H', 'momentum ×2', t.mom, t.mom.notes, ex(t.d4)) + card('15m', 'trigger ×1', t.trg, t.trg.notes, ex(t.d15) + (t.counterRegime ? ' · counter-regime' : ''));
+    const lv = (arr, cls) => arr.length ? arr.map(x => `<div class="lv"><span class="${cls} mono">${fmtPx(x.p)}</span><span class="muted">${esc(x.n)}</span></div>`).join('') : '<div class="lv muted">none in range</div>';
+    $('#supports').innerHTML = lv(state.lv.supports, 'up'); $('#resistances').innerHTML = lv(state.lv.resistances, 'down'); }
+  function renderPlan() { const p = state.plan; if (!p) return;
+    $('#planGrid').innerHTML = tile('Entry (market)', fmtPx(p.entry), p.limitEntry ? `or limit at ${fmtPx(p.limitEntry.p)}` : '') + tile('Stop', fmtPx(p.stop), `−${p.stopPct.toFixed(2)}% · 1.5 ATR under ${fmtPx(p.inval)}`, 'down') +
+      tile('Target 1', p.target ? fmtPx(p.target.p) : '—', p.target ? `+${(100 * (p.target.p - p.entry) / p.entry).toFixed(2)}% · ${esc(p.target.n)}` : 'no resistance above in range', 'up') + tile('Target 2', p.target2 ? fmtPx(p.target2.p) : '—', p.target2 ? `+${(100 * (p.target2.p - p.entry) / p.entry).toFixed(2)}%` : '', 'up') +
+      tile('Reward / risk', p.rr == null ? '—' : p.rr.toFixed(2), p.rr == null ? '' : p.rr >= 2 ? 'good' : p.rr >= 1.5 ? 'acceptable' : 'too thin, skip', p.rr != null && p.rr >= 1.5 ? 'up' : 'warn') +
+      tile('Position', fmt(p.notional) + ' USDT', `risk rule: ${fmt(p.riskUsd)} (${S.riskPct}% of ${fmt(S.balance)})`) + tile('If stop hits', '−' + fmt(p.lossAtStop), `incl. ${(p.feeRT * 100).toFixed(2)}% round-trip fee`, 'down') +
+      tile('If target 1 hits', p.gainAtTarget == null ? '—' : (p.gainAtTarget >= 0 ? '+' : '−') + fmt(Math.abs(p.gainAtTarget)), `break-even ${fmtPx(p.breakeven)}`, 'up');
+    $('#planNotes').innerHTML = p.notes.map(n => `<div class="note">${esc(n)}</div>`).join(''); $('#logBtn').disabled = false; }
+  function renderVerdict() { const v = state.verdict; if (!v) return; const el = $('#verdictAction'); el.textContent = v.action; el.className = 'big ' + v.level; $('#needle').style.left = (50 + 50 * Math.max(-6, Math.min(6, v.score)) / 6) + '%';
+    $('#vScore').textContent = (v.score >= 0 ? '+' : '') + v.score; $('#vTa').textContent = (state.ta.score >= 0 ? '+' : '') + state.ta.score + ` (${state.ta.tier.toLowerCase()})`; $('#vNews').textContent = v.newsUsed ? `${v.newsScore >= 0 ? '+' : ''}${v.newsScore} at ${S.newsWeight}% weight` : (state.news ? 'ignored (stale)' : 'none');
+    $('#vInval').textContent = state.plan ? `${fmtPx(state.plan.inval)} (15m structure)` : '—'; $('#vReasons').innerHTML = v.reasons.map(r => `<li>${esc(r)}</li>`).join('') || '<li>Chart and news agree; no gates tripped.</li>'; $('#verdictAge').textContent = 'as of ' + new Date(state.lastData).toLocaleTimeString(); $('#verdictAge').className = 'chip eye'; }
+  function renderNews() { const n = state.news; const age = $('#newsAge'); if (!n) { age.textContent = 'no scan yet'; age.className = 'chip'; return; }
+    const stale = !newsFresh(); age.textContent = (stale ? 'stale · ' : '') + ago(n.scannedAt); age.className = 'chip ' + (stale ? 'warn' : 'eye'); const sentCls = sgn(n.sentiment);
+    const ts = n.top_story; const dir = ts && String(ts.direction || '').toLowerCase();
+    const top = ts && ts.title ? `<div class="top-story"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="chip eye">top story</span><span class="chip ${dir === 'bullish' ? 'up' : dir === 'bearish' ? 'down' : ''}">${esc(dir || 'neutral')} for BTC</span>${ts.source ? `<span class="small muted">${esc(ts.source)}</span>` : ''}</div>
+        <div class="t">${ts.url ? `<a href="${esc(ts.url)}" target="_blank" rel="noopener">${esc(ts.title)}</a>` : esc(ts.title)}</div><div class="small">${esc(ts.summary || '')}</div>
+        ${ts.market_effect ? `<div class="small"><b>Effect on the market:</b> ${esc(ts.market_effect)}</div>` : ''}${ts.trade_implication ? `<div class="small"><b>For your trading:</b> ${esc(ts.trade_implication)}</div>` : ''}</div>` : '';
+    const headlines = (n.headlines || []).map(h => `<li><span class="imp ${sgn(h.impact) || 'muted'}">${h.impact > 0 ? '+' : ''}${h.impact ?? ''}</span><span>${h.url ? `<a href="${esc(h.url)}" target="_blank" rel="noopener">${esc(h.title)}</a>` : esc(h.title)} <span class="muted small">${esc(h.source || '')}${h.age ? ' · ' + esc(h.age) : ''}</span></span></li>`).join('');
+    const cats = (n.catalysts || []).map(c => `<li><span class="when">${esc(c.when || '')}</span><span>${esc(c.what)} <span class="chip ${c.risk === 'high' ? 'down' : c.risk === 'medium' ? 'warn' : ''}">${esc(c.risk || 'low')} risk</span></span></li>`).join('');
+    const cites = (n.sources || []).slice(0, 8).map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title || s.url)}</a>`).join(' · ');
+    $('#newsBody').innerHTML = `${top}<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span class="chip ${sentCls}">sentiment ${n.sentiment > 0 ? '+' : ''}${n.sentiment} / 5</span><span class="chip">confidence ${Math.round((n.confidence ?? 0) * 100)}%</span><span class="chip">horizon ${n.horizon_hours ?? '?'} h</span><span class="chip ${n.event_risk === 'high' ? 'down' : n.event_risk === 'medium' ? 'warn' : ''}">event risk ${esc(n.event_risk || 'low')}</span>${n.priced_in ? '<span class="chip warn">likely priced in</span>' : ''}</div>
+      <div class="briefing">${esc(n.briefing || '')}</div><div class="hypo"><b>Hypothesis:</b> ${esc(n.hypothesis || '')}</div>
+      <div class="two-col"><div class="case"><h3 class="up">Bull case</h3>${esc(n.bull_case || '—')}</div><div class="case"><h3 class="down">Bear case</h3>${esc(n.bear_case || '—')}</div></div>
+      ${n.what_changes_mind ? `<p class="small muted" style="margin:10px 0 0"><b>What would change this view:</b> ${esc(n.what_changes_mind)}</p>` : ''}
+      ${cats ? `<h3 class="sec">Catalysts ahead</h3><ul class="list">${cats}</ul>` : ''}
+      ${headlines ? `<h3 class="sec">Headlines that matter</h3><ul class="list">${headlines}</ul>` : ''}
+      ${cites ? `<p class="small faint" style="margin:10px 0 0">Sources: ${cites}</p>` : ''}<div class="usage">${esc(n.usage || '')}</div>`; }
+  function renderStats() { const st = Engine.stats(journal);
+    if (!st.n) { $('#stats').innerHTML = tile('Closed', '0', `${st.open} open`) + tile('Win rate', '—') + tile('Avg R', '—') + tile('Expectancy', '—', 'avg net $') + tile('Total net', '—'); return; }
+    $('#stats').innerHTML = tile('Closed', st.n, `${st.open} open`) + tile('Win rate', st.winRate.toFixed(0) + '%') + tile('Avg R', (st.avgR >= 0 ? '+' : '') + st.avgR.toFixed(2)) + tile('Expectancy', (st.expectancy >= 0 ? '+' : '−') + '$' + fmt(Math.abs(st.expectancy)), 'avg net $') + tile('Total net', (st.total >= 0 ? '+' : '−') + '$' + fmt(Math.abs(st.total)), `profit factor ${isFinite(st.profitFactor) ? st.profitFactor.toFixed(2) : '∞'}`); }
+  function renderJournal() { renderStats(); const rows = [...journal].sort((a, b) => b.ts - a.ts).map(t => `<tr data-id="${t.id}"><td class="mono">${fmtTime(t.ts)}</td><td><span class="chip ${t.status === 'open' ? 'eye' : t.outcome === 'win' ? 'up' : t.outcome === 'loss' ? 'down' : ''}">${t.status === 'open' ? 'open' : t.outcome}</span></td>
+      <td class="num">${fmtPx(t.entry)}</td><td class="num">${fmtPx(t.stop)}</td><td class="num">${fmtPx(t.target)}</td><td class="num">$${fmt(t.notional)}</td><td class="num">${t.taScore == null ? '' : (t.taScore >= 0 ? '+' : '') + t.taScore}</td><td class="num">${t.newsSent == null ? '' : (t.newsSent >= 0 ? '+' : '') + t.newsSent}</td><td style="white-space:normal;max-width:220px">${esc(t.note || '')}</td>
+      <td class="num">${t.status === 'open' ? `<span class="inline-close"><input type="number" step="0.01" placeholder="exit px" data-close="${t.id}"><button class="btn sm" data-closebtn="${t.id}" type="button">Close</button></span>` : fmtPx(t.exit) + (t.how ? ` <span class="faint">${t.how}</span>` : '')}</td>
+      <td class="num ${sgn(t.r)}">${t.r == null ? '' : (t.r >= 0 ? '+' : '') + t.r.toFixed(2)}</td><td class="num ${sgn(t.net)}">${t.net == null ? '' : (t.net >= 0 ? '+' : '−') + fmt(Math.abs(t.net), 3)}</td><td><button class="btn sm ghost" data-del="${t.id}" type="button" title="Delete">✕</button></td></tr>`).join('');
+    $('#jbody').innerHTML = rows || '<tr><td colspan="13" class="muted">Nothing logged yet. Tell Gull "log this trade" when the plan is one you would take.</td></tr>'; }
+  function renderAll() { recompute(); if (state.ta) { renderTA(); renderPlan(); renderVerdict(); renderMarket(); if (chart) drawChart(); } renderNews(); renderJournal(); renderAnalysis(); }
+
+  // ---- transcript ----
+  let lines = [];
+  function addLine(who, text) { lines.push({ who, text, ts: Date.now() }); if (lines.length > 200) lines.shift(); if (currentPane === 'transcript' && stageOpen()) renderTranscript(); }
+  function renderTranscript() { $('#tlog').innerHTML = lines.length ? [...lines].reverse().map(l => `<div class="l ${l.who}"><time>${l.who === 'you' ? 'You' : 'Gull'} · ${new Date(l.ts).toLocaleTimeString()}</time>${esc(l.text)}</div>`).join('') : '<div class="empty">Nothing said yet.</div>'; }
+  $('#clearChat').onclick = () => { lines = []; history = []; renderTranscript(); toast('New conversation. Gull forgot the earlier chat (not the journal).'); };
+
+  // ---- journal actions ----
+  const saveJournal = () => { store.set(ukey('journal'), journal); remote.save('journal', journal); renderJournal(); };
+  function logPlan(note, p = activePlan()) { if (!p || !state.ta) return null; const t = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ts: Date.now(), side: 'long', entry: +p.entry.toFixed(2), stop: +p.stop.toFixed(2), target: p.target ? +p.target.p.toFixed(2) : +(p.entry * 1.01).toFixed(2), notional: +p.notional.toFixed(2), note: note || '', taScore: state.ta.score, newsSent: state.news && state.verdict.newsUsed ? state.news.sentiment : null, status: 'open' }; journal.push(t); saveJournal(); return t; }
+  $('#logBtn').onclick = () => { const p = state.plan; if (!p) return; $('#fEntry').value = p.entry.toFixed(2); $('#fStop').value = p.stop.toFixed(2); $('#fTarget').value = p.target ? p.target.p.toFixed(2) : ''; $('#fNotional').value = p.notional.toFixed(2);
+    const hypo = newsFresh() ? (state.news.hypothesis || '') : ''; $('#fNote').value = hypo.length > 120 ? hypo.slice(0, 120).replace(/\s+\S*$/, '') + '…' : hypo; showPane('journal'); $('#logForm').hidden = false; $('#fNote').focus(); };
+  $('#fCancel').onclick = () => $('#logForm').hidden = true;
+  $('#fSave').onclick = () => { const entry = +$('#fEntry').value, stop = +$('#fStop').value, target = +$('#fTarget').value, notional = +$('#fNotional').value; if (!(entry > 0 && stop > 0 && stop < entry && target > entry && notional > 0)) { toast('Check the numbers: stop below entry, target above it.'); return; }
+    journal.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ts: Date.now(), side: 'long', entry, stop, target, notional, note: $('#fNote').value.trim(), taScore: state.ta ? state.ta.score : null, newsSent: state.news && state.verdict && state.verdict.newsUsed ? state.news.sentiment : null, status: 'open' }); $('#logForm').hidden = true; saveJournal(); toast('Logged.'); };
+  $('#jbody').onclick = e => { const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.closebtn) { const id = b.dataset.closebtn; const px = +document.querySelector(`input[data-close="${id}"]`).value; if (!(px > 0)) { toast('Enter the exit price first.'); return; } journal = journal.map(t => t.id === id ? Engine.closeTrade(t, px, Date.now(), S.feePct) : t); saveJournal(); }
+    if (b.dataset.del) { if (b.dataset.armed) { journal = journal.filter(t => t.id !== b.dataset.del); saveJournal(); } else { b.dataset.armed = '1'; b.textContent = 'sure?'; setTimeout(() => { b.dataset.armed = ''; b.textContent = '✕'; }, 2500); } } };
+  async function checkOpenTrades() { const open = journal.filter(t => t.status === 'open'); if (!open.length) return { resolved: 0, open: 0 }; let n = 0;
+    for (const t of open) { let start = t.ts, candles = []; for (let page = 0; page < 6; page++) { const rows = await bget(`/api/v3/klines?symbol=BTCUSDT&interval=15m&startTime=${start}&limit=1000`); const k = parseK(rows); candles = candles.concat(k.slice(0, -1)); if (rows.length < 1000) break; start = rows[rows.length - 1][6] + 1; }
+      const res = Engine.resolveTrade(t, candles); if (res) { journal = journal.map(x => x.id === t.id ? { ...Engine.closeTrade(x, res.exit, res.exitTs, S.feePct), how: res.how } : x); n++; } }
+    saveJournal(); return { resolved: n, open: open.length - n }; }
+  $('#checkBtn').onclick = async () => { $('#checkBtn').disabled = true; try { const r = await checkOpenTrades(); toast(r.resolved ? `${r.resolved} trade(s) resolved from price history.` : 'No open trade has touched its stop or target yet.'); } catch (e) { toast('Could not fetch history: ' + e.message); } $('#checkBtn').disabled = false; };
+  $('#exportBtn').onclick = () => { const blob = new Blob([JSON.stringify({ journal, settings: S, exported: new Date().toISOString() }, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `gull-journal-${new Date().toISOString().slice(0, 10)}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
+  $('#importFile').onchange = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { const d = JSON.parse(r.result); const rows = Array.isArray(d) ? d : d.journal; if (!Array.isArray(rows)) throw new Error('no journal array'); const ids = new Set(journal.map(t => t.id)); let n = 0; for (const t of rows) if (t && t.id && !ids.has(t.id)) { journal.push(t); n++; } saveJournal(); toast(`Imported ${n} trade(s).`); } catch (err) { toast('Import failed: ' + err.message); } }; r.readAsText(f); e.target.value = ''; };
+  $('#clearBtn').onclick = e => { const b = e.currentTarget; if (b.dataset.armed) { journal = []; saveJournal(); b.dataset.armed = ''; b.textContent = 'Clear'; } else { b.dataset.armed = '1'; b.textContent = 'Really clear all?'; setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Clear'; }, 3000); } };
+
+  // ---- Anthropic calls ----
+  async function callAnthropic(body) { const r = await api('/api/anthropic', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const txt = await r.text(); let j; try { j = JSON.parse(txt); } catch { j = null; }
+    if (!r.ok) throw new Error(`API ${r.status}: ${j && j.error ? (j.error.message || j.error) : txt.slice(0, 300)}`); return j; }
+
+  // ---- news scan ----
+  const NEWS_SYSTEM = `You are the news desk for a Bitcoin spot trader (BTC/USDT on Binance) who holds positions for hours to a few days. Your job: find what has moved or will move BTC in the last 24 hours and the next 48 hours, pick the single most important story, and form one hypothesis for the stated horizon.
+Use the web_search tool (limited searches; spend them on: macro (central banks, inflation prints, jobs, the dollar, yields, equities), spot ETF flows, regulation and court rulings, exchange incidents or hacks, large liquidations or whale/on-chain moves, stablecoin flows, and the economic calendar for the next 48 hours).
+Prefer major or primary sources (Reuters, Bloomberg, CoinDesk, The Block, official statements, exchange status pages). Ignore price-prediction clickbait, influencer posts and anything older than 3 days unless it is a scheduled event.
+Weigh a story by how much it actually moves price, not by how loud it is. By the time news is public much of the move has often happened; say when the market has likely already priced the main story in. "No edge from news" is a valid and common answer; never invent a catalyst.
+The trader already has a technical read, which you will be given; do not repeat it, react to it.
+Write a plain-language briefing under 180 words (no headers, no bullet symbols), then on a new line output exactly one JSON object inside <json></json> tags with these keys:
+sentiment (integer -5..5), confidence (0..1), horizon_hours (integer), priced_in (true|false), hypothesis (1-2 sentences), bull_case (1-2 sentences), bear_case (1-2 sentences), what_changes_mind (1 sentence), event_risk_next_hours ("high"|"medium"|"low"),
+top_story ({title, source, url, summary (1-2 sentences), market_effect (1-2 sentences: how and how much it is likely to move BTC, over what horizon), direction ("bullish"|"bearish"|"neutral"), trade_implication (1 sentence: trade, wait or stay out, and why)}),
+catalysts (array of {when, what, risk:"high"|"medium"|"low"}, max 5, soonest first), headlines (array of {title, source, url, age, impact:-3..3}, max 6, most important first).`;
+  const extractJson = text => { const m = text.match(/<json>([\s\S]*?)<\/json>/i); const raw = m ? m[1] : (text.match(/\{[\s\S]*\}/) || [''])[0]; return JSON.parse(raw.trim()); };
+  let scanning = false;
+  async function scanNews() { if (!state.ta) throw new Error('No chart data yet.'); if (scanning) throw new Error('A scan is already running.'); scanning = true;
+    const btn = $('#scanBtn'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Scanning…'; $('#newsBody').innerHTML = '<div class="empty"><span class="spinner"></span>Searching the web and forming a hypothesis. 20–60 seconds.</div>';
+    try { const now = new Date(); const horizon = 8; const messages = [{ role: 'user', content: `Current time: ${now.toUTCString()} (${now.toLocaleString()} local). Horizon: next ${horizon} hours.\nTechnical read right now: ${taSummary()}\nScan the news and give me the briefing and the JSON.` }];
+      const body = { model: S.model, max_tokens: 3500, system: NEWS_SYSTEM, messages, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: Math.max(1, Math.min(10, S.maxSearches)) }] };
+      let msg = await callAnthropic(body), guard = 0, searches = 0, inTok = 0, outTok = 0; const acc = () => { searches += (msg.usage && msg.usage.server_tool_use && msg.usage.server_tool_use.web_search_requests) || 0; inTok += (msg.usage && msg.usage.input_tokens) || 0; outTok += (msg.usage && msg.usage.output_tokens) || 0; }; acc();
+      while (msg.stop_reason === 'pause_turn' && guard++ < 4) { messages.push({ role: 'assistant', content: msg.content }); msg = await callAnthropic({ ...body, messages }); acc(); }
+      const text = msg.content.filter(b => b.type === 'text').map(b => b.text).join('\n'); const sources = []; for (const b of msg.content) if (b.type === 'text' && Array.isArray(b.citations)) for (const c of b.citations) if (c.url && !sources.some(s => s.url === c.url)) sources.push({ url: c.url, title: c.title });
+      let parsed; try { parsed = extractJson(text); } catch { throw new Error('The news model answered but its JSON block could not be read. Try again.'); }
+      const briefing = text.replace(/<json>[\s\S]*?<\/json>/i, '').replace(/\{[\s\S]*\}\s*$/, '').trim();
+      state.news = { ...parsed, sentiment: Math.max(-5, Math.min(5, Math.round(+parsed.sentiment || 0))), confidence: Math.max(0, Math.min(1, +parsed.confidence || 0)), event_risk: String(parsed.event_risk_next_hours || 'low').toLowerCase(), briefing, sources, scannedAt: Date.now(), model: S.model,
+        usage: `${S.model} · ${searches} web search${searches === 1 ? '' : 'es'} (~$${(searches * 0.01).toFixed(2)}) + ${inTok.toLocaleString()} in / ${outTok.toLocaleString()} out tokens · ${now.toLocaleTimeString()}` };
+      store.set('gull.news', state.news); remote.save('news', state.news); renderAll(); return state.news; }
+    catch (e) { $('#newsBody').innerHTML = `<div class="errbox">${esc(e.message)}</div>`; if (state.news) setTimeout(renderNews, 4000); throw e; }
+    finally { scanning = false; btn.disabled = false; btn.textContent = 'Scan news'; } }
+  $('#scanBtn').onclick = async () => { try { await scanNews(); say(newsLine()); } catch (e) { toast(e.message); } };
+
+  // ---- desk state as text (what Gull sees) ----
+  function taSummary() { const t = state.ta; if (!t) return 'No technical read available.'; const p = state.plan;
+    return `Price ${fmtPx(t.d15.price)}. Daily regime ${t.reg.label} (${t.reg.notes.join('; ')}). 4H momentum score ${t.mom.score} (${t.mom.notes.join('; ')}). 15m trigger score ${t.trg.score} (${t.trg.notes.join('; ')}). Composite chart score ${t.score} of ±6 = ${t.tier}. Nearest support ${state.lv.supports.map(x => fmtPx(x.p)).join(', ') || 'none'}; nearest resistance ${state.lv.resistances.map(x => fmtPx(x.p)).join(', ') || 'none'}. Planned stop ${fmtPx(p.stop)} (-${p.stopPct.toFixed(2)}%), target ${p.target ? fmtPx(p.target.p) : 'none'}.`; }
+  function deskState() { const t = state.ta, p = state.plan, v = state.verdict, n = state.news, c = state.ctx, b = state.book, f = state.fng, a = state.analysis; const now = new Date(); const ses = Engine.session(now);
+    if (!t) return `DESK STATE (${now.toUTCString()}): no chart data loaded yet (Binance fetch failed or still loading). Trader's name: ${callName() || 'not given'}.`;
+    const st = Engine.stats(journal); const ageS = Math.round((Date.now() - state.lastData) / 1000); const lines = [
+      `DESK STATE. Now: ${now.toUTCString()} (trader's local time ${now.toLocaleString()}). Candles fetched ${ageS} seconds ago. Trader's name: ${callName() || 'not given'}. Stage currently ${stageOpen() ? 'showing ' + currentPane : 'closed (eye full screen)'}.`,
+      `Live price ${fmtPx(state.price || t.d15.price)} USDT${state.chg != null ? `, 24h ${pct(state.chg, 2)}` : ''}. Balance ${fmt(S.balance)} USDT, risk ${S.riskPct}% per trade, fee ${S.feePct}% per side, min order ${S.minOrder} USDT.`,
+      c ? `PAST (daily candles): 7d ${pct(c.ret7)}, 30d ${pct(c.ret30)}, 90d ${pct(c.ret90)}, 200d ${pct(c.ret200)}. ${c.days}-day range ${fmt0(c.lo)} to ${fmt0(c.hi)}; price at ${c.rangePos.toFixed(0)}% of the range, ${pct(c.fromHigh)} from the high. 40-day structure: ${c.structure}. Daily ATR ${c.atrPct == null ? '—' : c.atrPct.toFixed(2) + '%'} (typical 24h range ${fmt0((state.price || t.d15.price) - t.d1.atr)} to ${fmt0((state.price || t.d15.price) + t.d1.atr)}); 30-day realized volatility ${c.rv30.toFixed(0)}% annualized. Volume last 7 days vs 30-day average: ${c.volRatio == null ? '—' : c.volRatio.toFixed(2) + 'x'}.` : 'PAST: daily context unavailable.',
+      `1D regime: ${t.reg.label} (score ${t.reg.score}/4): ${t.reg.notes.join('; ')}.`, `4H momentum: score ${t.mom.score}/4: ${t.mom.notes.join('; ')}.`, `15m trigger: score ${t.trg.score}/4: ${t.trg.notes.join('; ')}.`,
+      `Chart score ${t.score >= 0 ? '+' : ''}${t.score} of ±6 = ${t.tier}${t.counterRegime ? ' (COUNTER-REGIME: trigger fights the daily trend)' : ''}. 15m ATR ${fmtPx(t.d15.atr)}, 4H ATR ${fmtPx(t.d4.atr)}, 1D ATR ${fmtPx(t.d1.atr)}. RSI 15m ${t.d15.rsi == null ? '—' : t.d15.rsi.toFixed(0)}, 4H ${t.d4.rsi == null ? '—' : t.d4.rsi.toFixed(0)}, 1D ${t.d1.rsi == null ? '—' : t.d1.rsi.toFixed(0)}.`,
+      `PRESENT extras: order book ${b ? `${(b.imbalance * 100).toFixed(0)}% imbalance (${b.imbalance > 0 ? 'bids' : 'asks'} heavier) within ${b.within.toFixed(2)}% of price, spread ${b.spreadPct.toFixed(3)}%` : 'unavailable'}. Fear & Greed ${f ? `${f.value} (${f.label})${f.prev != null ? `, yesterday ${f.prev}` : ''}` : 'unavailable'}. Session: ${ses.name}${ses.weekend ? ', weekend' : ''}${ses.note ? ' (' + ses.note + ')' : ''}.`,
+      `Support below: ${state.lv.supports.map(x => `${fmtPx(x.p)} (${x.n})`).join('; ') || 'none'}. Resistance above: ${state.lv.resistances.map(x => `${fmtPx(x.p)} (${x.n})`).join('; ') || 'none'}.`,
+      `Market plan (spot long at market): ${planText(p)}; invalidation ${fmt0(p.inval)}.${p.limitEntry ? ` A limit at the nearest support ${fmtPx(p.limitEntry.p)} is the alternative.` : ''}${p.notes.length ? ' Sizing notes: ' + p.notes.join(' ') : ''}`,
+      `Desk verdict: ${v.action} (combined ${v.score >= 0 ? '+' : ''}${v.score}; chart ${t.score}; news ${v.newsUsed ? v.newsScore + ' at ' + S.newsWeight + '% weight' : 'not used'}). ${v.reasons.join(' ')}`,
+      n ? `News desk (scanned ${ago(n.scannedAt)}, ${Math.round((Date.now() - n.scannedAt) / 60000)} minutes ago${!newsFresh() ? ', STALE, ignored by verdict' : ''}): sentiment ${n.sentiment}/5, confidence ${Math.round((n.confidence || 0) * 100)}%, horizon ${n.horizon_hours}h, event risk ${n.event_risk}, priced in: ${n.priced_in ? 'yes' : 'no'}. ${n.top_story && n.top_story.title ? `Top story: ${n.top_story.title} (${n.top_story.source || ''}). ${n.top_story.summary || ''} Effect: ${n.top_story.market_effect || ''} Direction ${n.top_story.direction || ''}. For trading: ${n.top_story.trade_implication || ''} ` : ''}Hypothesis: ${n.hypothesis} Bull: ${n.bull_case} Bear: ${n.bear_case} Changes mind: ${n.what_changes_mind || ''}. Catalysts: ${(n.catalysts || []).map(c => `${c.when}: ${c.what} (${c.risk})`).join('; ') || 'none'}. Headlines: ${(n.headlines || []).slice(0, 5).map(h => `${h.title} [${h.source}, ${h.impact >= 0 ? '+' : ''}${h.impact}]`).join('; ')}` : 'News desk: no scan yet.',
+      a ? `Last trade analysis shown ${ago(a.ts)}: ${(VERDICT[a.verdict] || [a.verdict])[0]}, conviction ${a.conviction}/5, at BTC ${fmt0(a.price)}.` : 'No trade analysis shown yet this session.',
+      `Journal: ${journal.length} trades (${st.open} open, ${st.n} closed)${st.n ? `, win rate ${st.winRate.toFixed(0)}%, avg R ${st.avgR.toFixed(2)}, expectancy ${fmt(st.expectancy)} USDT per trade, total net ${fmt(st.total)} USDT` : ''}.` ];
+    return lines.join('\n'); }
+
+  // ---- Gull's brain ----
+  const GULL_SYSTEM = `You are Gull, the voice and second brain of one trader who trades only BTC/USDT on Binance spot. You appear as a glowing eye on their screen. Everything you write is spoken aloud by text-to-speech and shown as subtitles, sentence by sentence.
+
+HOW YOU TALK: you are heard, not read, so sound like a real person talking to a friend at the desk, never like a report. A calm, sharp desk partner with a bit of warmth. Always use contractions. Use the small sounds people really make: "hmm", "um", "uh", "mm", "well", "okay so", "right", "exactly", "yeah", "honestly", "look". One or two in a normal reply, usually where you start a thought or weigh something ("Hmm, okay so... the daily's still holding up."); never stack them, never put one inside a number, and keep them out of the middle of a trade specification. Mix short sentences with longer ones; react before you explain ("Yeah, that's the thing."). Trailing off with "..." is fine once in a while.
+Voice cues: the voice engine performs these and the subtitles hide them. [pause] is a short beat, for example before the verdict or a key number. [breath] is an audible breath, before a longer explanation. [sigh] is a real sigh, now and then when the market is choppy, a setup just failed, or the trader took a loss. At most two cues per reply, and no other bracketed or starred actions.
+No markdown, no lists, no bullet symbols, no headers, no emojis, no tables. One to four sentences for most questions; a full trade answer or market scenario can run longer, but keep each sentence short enough to read as a subtitle. Round prices to whole dollars unless cents matter; say percentages with one decimal. Use the trader's first name now and then, not in every reply. Never greet again in the middle of a conversation. Never say tool names aloud.
+
+NUMBERS: The DESK STATE block and tool results are your only source of live numbers, levels, scores, headlines and events. Never invent any of them. If something is not there, say you don't have it. Never claim certainty: give a lean and the level that proves it wrong ("lean long while 79,600 holds").
+
+SPOT ONLY: no shorting, no leverage, no futures, no altcoins. Bearish means stay in USDT or sell what is held. If asked about those, say this desk is built for BTC/USDT spot and give the spot-relevant answer briefly.
+
+THE SCREEN: There is a stage that opens on the right while your eye moves to the left. Whenever you talk about something visual, put it on screen in the same turn: show_panel market for the overall scenario, show_chart for the chart (pick the timeframe that fits the question), show_panel news, trade, score, journal, transcript or help. Use close_panel when the trader wants you full screen again. Use go_to_sleep when they say they are done for now.
+
+MARKET QUESTIONS ("what's going on", "how's the market", "what's the scenario"): refresh_data if the candles are older than 2 minutes, show the market panel, then tell the whole scenario as it is, in this order: where we came from (the daily trend, the last week and month, where price sits in its range and the structure); what is happening now (4-hour momentum, the 15-minute picture, volume, the order book, Fear and Greed, which session it is); and what you are watching next (the levels that matter, the typical 24-hour range, any event ahead). Finish with the desk's lean in one sentence.
+
+NEWS QUESTIONS: if there is no scan or it is older than 60 minutes, call scan_news first and say briefly that you are checking and it takes up to a minute. Then: the top story in one or two sentences; how it is likely to affect Bitcoin and over what horizon; whether it is likely priced in; any scheduled event risk ahead; and a straight answer: is this a time to trade, to wait, or to stay out, and why. Show the news panel.
+
+BEFORE ANY TRADE SUGGESTION ("should I buy", "should I trade", "is it a good time", "give me a setup", "where would you enter"), always do the full process, every single time, even if you did it a few minutes ago:
+1. refresh_data, so every number is live.
+2. If the news scan is missing or older than 60 minutes, scan_news.
+3. Think through the past, the present and the future: the daily trend, 7/30/90-day moves, range position and structure; 4-hour momentum, the 15-minute trigger, volume, order book, sentiment and session; then bull, base and bear scenarios with probabilities that add to 100, the typical 24-hour range, and the events ahead.
+4. Call present_trade_analysis with your verdict and reasoning. The page computes entry, stop, both targets, position size and dollar risk from the desk engine; you supply the verdict, conviction and the words. Use buy_limit only with a limit price that is one of the support levels in the desk state, when buying at market is too far from support to give a good ratio.
+5. Then speak, using the exact numbers the tool returns: the verdict and the one-line reason; the setup (entry, stop and how far below it is, target one and target two, the reward-to-risk ratio, the position size in USDT, the dollars lost if the stop hits and made at target one); what invalidates the idea; the biggest risk; and how to place it on Binance (a limit or market buy, then an OCO sell with the take-profit at target one and the stop-limit just under the stop). If the verdict is wait or stay in USDT, say exactly what would turn it into a trade.
+Hard rules you never override: no buy when reward-to-risk to target one is under 1.5; no buy when the news desk flags high event risk inside its horizon; never size above the trader's risk percent; counter-trend setups are half size or a skip; if your conviction is under 3 out of 5, the answer is wait. The page enforces the first rules too and will tell you if it downgraded your verdict; then explain why to the trader. On a small account fees matter: say so when target one barely clears break-even.
+
+LOGGING: log_plan when the trader says to log it, take it on paper, or that they took the trade; confirm what was logged.
+
+YOUR KNOWLEDGE (teach it briefly and practically when asked, and use it in your judgement):
+Risk: risk 1 to 2 percent of the account per trade; position size equals dollars at risk divided by the stop distance in percent. Think in R, the stop distance: a 40 percent win rate at 2R targets makes money, a 60 percent win rate at 0.5R loses. Expectancy is win rate times average win minus loss rate times average loss. Never move a stop further away. After two or three losses in a day, stop for the day. A skipped trade is a position.
+Binance spot orders: market orders pay the taker fee and fill now; limit orders can pay the lower maker fee but may not fill; a stop-limit triggers at the stop and places a limit, so set the limit a little below the trigger or a fast drop can skip it; an OCO pairs a take-profit limit with a stop-limit and cancels one when the other fills; trailing stops exist on spot. The standard fee is 0.1 percent per side, less with BNB. The minimum order is about 5 USDT. Prices on BTC/USDT step in cents and quantity in 0.00001 BTC.
+Structure: an uptrend makes higher highs and higher lows; a break of the last higher low is the first warning. Old resistance often becomes support. Obvious lows get swept before reversals, so a reclaim after a sweep is a classic long entry. Round numbers act as magnets. Higher timeframes set the direction, lower ones time the entry; do not fight the daily trend.
+Indicators: EMAs 21, 50 and 200 show trend and dynamic support; RSI above 70 or below 30 can persist in a strong trend, and divergence at a level matters more than the number; MACD crosses show momentum shifts; volume confirms breakouts, and a breakout on low volume often fails; ATR sets a stop outside normal noise; a Bollinger squeeze often comes before a big move; ADX under 20 means range, over 25 means trend.
+Spot strategies: buying pullbacks to support or the rising 21 or 50 EMA in an uptrend; breakout and retest; range trading between clear support and resistance when ADX is low; dollar-cost averaging for long-term holdings, kept separate from the trading account; standing aside before high-impact events.
+Timing: Asia is usually quieter; the London open and especially the New York open bring volume; US data lands at 12:30 to 14:00 UTC; weekends are thin and full of fake breakouts; the CME futures open on Sunday evening can gap.
+What moves Bitcoin: Fed decisions and press conferences, CPI, PCE and jobs reports; the dollar index and bond yields (rising is a headwind); US stocks in risk-off moves; spot ETF flows; stablecoin supply; large transfers to exchanges; miner selling; exchange hacks and outages; regulation and court rulings; and the four-year halving cycle in the background.
+Psychology: FOMO after a big green candle, revenge trading after a loss, moving stops, overtrading in chop and sizing up after wins are the classic account killers. Plan the trade before you enter; journal every trade; judge the process, not one outcome.
+
+LANGUAGE: the trader may speak English, Urdu or Roman Urdu; reply in English unless asked otherwise. Speech recognition makes mistakes: "gold", "goal" or "girl" is probably your name, "bit coin" is Bitcoin. Infer the likely meaning, or ask one short question if you really can't.
+
+Honesty: probabilities and leans, never promises. Say "not financial advice" at most once per conversation, and only when it fits naturally.`;
+  const TOOLS = [
+    { name: 'show_chart', description: 'Open the price chart on the stage at a timeframe (the eye moves left).', input_schema: { type: 'object', properties: { timeframe: { type: 'string', enum: ['15m', '1h', '4h', '1d'] } }, required: ['timeframe'] } },
+    { name: 'show_panel', description: 'Open a panel on the stage (the eye moves left). market = past/present/ahead overview; analysis = the last trade analysis; trade = desk verdict and market plan; score = the three-timeframe chart score and levels; news; journal; transcript; help.', input_schema: { type: 'object', properties: { panel: { type: 'string', enum: ['market', 'analysis', 'trade', 'score', 'news', 'journal', 'transcript', 'help'] } }, required: ['panel'] } },
+    { name: 'close_panel', description: 'Close the stage so the eye is full screen again.', input_schema: { type: 'object', properties: {} } },
+    { name: 'scan_news', description: 'Run a fresh web news scan (costs API money, 20-60 seconds). Returns the news desk summary including the top story.', input_schema: { type: 'object', properties: {} } },
+    { name: 'refresh_data', description: 'Refetch candles, order book and recompute scores, plan and verdict. Returns the new desk state.', input_schema: { type: 'object', properties: {} } },
+    { name: 'present_trade_analysis', description: 'Put the full pre-trade analysis on screen. Call it before every trade suggestion, after refresh_data and after making sure the news is fresh. The page computes entry, stop, targets, size and dollar risk from the desk engine and enforces the desk rules; you supply the judgement and the words. Returns the exact numbers shown and any rule that overrode your verdict.',
+      input_schema: { type: 'object', properties: {
+        verdict: { type: 'string', enum: ['buy_now', 'buy_limit', 'wait', 'stay_in_usdt', 'sell_if_holding'] },
+        limit_price: { type: 'number', description: 'Only with buy_limit: one of the support levels listed in the desk state.' },
+        conviction: { type: 'integer', minimum: 1, maximum: 5 },
+        headline: { type: 'string', description: 'One sentence: the call and the main reason.' },
+        past: { type: 'string', description: '2-3 sentences: the daily trend, the 7/30/90-day moves, where price sits in its range, the structure.' },
+        present: { type: 'string', description: '2-3 sentences: 4H momentum, the 15m trigger, volume, order book, Fear & Greed, session.' },
+        future: { type: 'string', description: '2-3 sentences: what is likely next and why, with the levels and timing that matter.' },
+        news_impact: { type: 'string', description: '1-2 sentences: how the current news and the events ahead affect this trade.' },
+        scenarios: { type: 'array', maxItems: 3, items: { type: 'object', properties: { name: { type: 'string', enum: ['bull', 'base', 'bear'] }, probability: { type: 'integer', minimum: 0, maximum: 100 }, path: { type: 'string', description: 'one sentence with levels' } }, required: ['name', 'probability', 'path'] } },
+        risks: { type: 'array', maxItems: 5, items: { type: 'string' } },
+        trigger_to_act: { type: 'string', description: 'For wait or stay_in_usdt: exactly what would turn this into a trade. For buys: how to manage it (partial at target 1, moving the stop).' },
+        invalidation: { type: 'string', description: 'One sentence: what would prove this read wrong.' } },
+        required: ['verdict', 'conviction', 'headline', 'past', 'present', 'future', 'news_impact', 'scenarios', 'risks', 'trigger_to_act', 'invalidation'] } },
+    { name: 'log_plan', description: 'Log the current plan (the latest trade analysis if recent, otherwise the market plan) to the paper journal as an open trade.', input_schema: { type: 'object', properties: { note: { type: 'string', description: 'one-line reason for the trade' } } } },
+    { name: 'get_journal', description: 'Return paper-trade journal entries and statistics.', input_schema: { type: 'object', properties: {} } },
+    { name: 'go_to_sleep', description: 'Put Gull to sleep (eye closes, she listens only for her wake words). Use when the trader is done for now. Say a short goodbye in the same turn.', input_schema: { type: 'object', properties: {} } } ];
+  let sleepAfterReply = false;
+  async function runTool(name, input) { switch (name) {
+    case 'show_chart': openStage('chart'); setTf(input.timeframe || '15m'); return `Chart shown at ${state.tf}.`;
+    case 'show_panel': openStage(input.panel); return `${input.panel} panel shown.`;
+    case 'close_panel': closeStage(); return 'Stage closed; the eye is full screen.';
+    case 'scan_news': { openStage('news'); try { const n = await scanNews(); const ts = n.top_story || {}; return `Scan done. Top story: ${ts.title || 'none'} (${ts.source || ''}). ${ts.summary || ''} Effect: ${ts.market_effect || ''} Direction: ${ts.direction || ''}. For trading: ${ts.trade_implication || ''} Sentiment ${n.sentiment}/5, confidence ${Math.round(n.confidence * 100)}%, event risk ${n.event_risk}, priced in ${n.priced_in}. Hypothesis: ${n.hypothesis} Bull: ${n.bull_case} Bear: ${n.bear_case} Catalysts: ${(n.catalysts || []).map(c => `${c.when}: ${c.what} (${c.risk})`).join('; ') || 'none'}. Headlines: ${(n.headlines || []).slice(0, 5).map(h => `${h.title} [${h.source}]`).join('; ')}. New desk verdict: ${state.verdict.action} (${state.verdict.score}).`; } catch (e) { return `Scan failed: ${e.message}`; } }
+    case 'refresh_data': { const ok = await refreshData(); return ok ? deskState() : 'Refresh failed; Binance data could not be fetched.'; }
+    case 'present_trade_analysis': { if (!state.ta) return 'No chart data, so no analysis can be built. Tell the trader.';
+      const asked = VERDICT[input.verdict] ? input.verdict : 'wait'; let p = state.plan, note = '';
+      if (asked === 'buy_limit') { const lp = +input.limit_price; if (lp > 0 && lp < state.ta.d15.price * 0.999) p = Engine.plan(state.ta.d15, state.lv, S, lp); else note = 'The limit price was missing or not below market, so the numbers use a market entry.'; }
+      const gates = []; if (isBuy(asked)) { for (const c of deskChecks(p)) if (c.gate && !c.ok) gates.push(c.item + ': not met.'); if ((+input.conviction || 0) < 3) gates.push('Conviction under 3 of 5.'); }
+      const verdict = gates.length ? 'wait' : asked;
+      state.analysis = { ...input, verdict, asked, gates, note, plan: p, ts: Date.now(), price: state.price || state.ta.d15.price, conviction: Math.max(1, Math.min(5, Math.round(+input.conviction || 1))) };
+      store.set(ukey('analysis'), state.analysis); renderAnalysis(); if (chart) drawChart(); openStage('analysis');
+      return `Shown on screen. Verdict on screen: ${VERDICT[verdict][0]}.${gates.length ? ` The desk rules downgraded your ${VERDICT[asked][0]} to WAIT because: ${gates.join(' ')} Explain this to the trader.` : ''} ${note} Numbers on screen: ${planText(p)}; the idea breaks under ${fmt0(p.inval)}. OCO stop-limit at ${fmt0(p.stop * 0.998)}. Use these exact numbers when you speak.`; }
+    case 'log_plan': { const tr = logPlan(input.note || ''); openStage('journal'); return tr ? `Logged open paper trade: entry ${tr.entry}, stop ${tr.stop}, target ${tr.target}, size ${tr.notional} USDT.` : 'No plan available to log.'; }
+    case 'get_journal': { const st = Engine.stats(journal); return JSON.stringify({ stats: st, trades: [...journal].sort((a, b) => b.ts - a.ts).slice(0, 15).map(t => ({ opened: fmtTime(t.ts), status: t.status, outcome: t.outcome, entry: t.entry, stop: t.stop, target: t.target, size: t.notional, exit: t.exit, r: t.r, net: t.net, note: t.note })) }); }
+    case 'go_to_sleep': sleepAfterReply = true; return 'Gull will go to sleep after this reply. Say a short goodbye.';
+    default: return 'Unknown tool.'; } }
+  let history = [];
+  function trimHistory() { while (history.length > 30) { history.shift(); while (history.length && !(history[0].role === 'user' && typeof history[0].content === 'string')) history.shift(); } }
+  async function brain(userText) { const mark = history.length; history.push({ role: 'user', content: userText }); trimHistory(); let spoken = '';
+    try {
+      for (let i = 0; i < 8; i++) { const resp = await callAnthropic({ model: S.model, max_tokens: 2500, system: [{ type: 'text', text: GULL_SYSTEM, cache_control: { type: 'ephemeral' } }, { type: 'text', text: deskState() }], messages: history, tools: TOOLS });
+        const text = resp.content.filter(b => b.type === 'text').map(b => b.text).join(' ').trim(); const uses = resp.content.filter(b => b.type === 'tool_use');
+        history.push({ role: 'assistant', content: resp.content });
+        if (resp.stop_reason === 'tool_use' && uses.length) { if (text) { spoken += (spoken ? ' ' : '') + text; say(text); }
+          setSub(toolNote(uses[uses.length - 1].name), 'thinking'); Eye.setState('thinking');
+          const results = []; for (const u of uses) { let out; try { out = await runTool(u.name, u.input || {}); } catch (e) { out = 'Tool error: ' + e.message; } results.push({ type: 'tool_result', tool_use_id: u.id, content: String(out) }); }
+          history.push({ role: 'user', content: results }); continue; }
+        return text || (spoken ? '' : 'I have nothing to add.'); }
+      return spoken ? '' : 'I got stuck in a loop of tools; ask me again.';
+    } catch (e) { history.length = Math.min(history.length, mark); if (/Session/.test(e.message)) throw e; toast(e.message);
+      return 'Hmm, my thinking service isn\'t answering, so [pause] this is just the plain read from the numbers. ' + localBrain(userText); } }
+  const toolNote = n => ({ refresh_data: 'Refreshing the live data…', scan_news: 'Scanning the news. Up to a minute…', present_trade_analysis: 'Putting the analysis on screen…', get_journal: 'Reading the journal…' }[n] || '…');
+
+  // ---- fallback brain from the numbers alone (when the API fails) ----
+  function newsLine() { const n = state.news; if (!n) return 'No news scan yet.'; const ts = n.top_story; return `News, scanned ${ago(n.scannedAt)}${newsFresh() ? '' : ' and now stale'}. ${ts && ts.title ? `The top story: ${ts.title}. ${ts.market_effect || ''} ` : ''}Sentiment ${n.sentiment > 0 ? 'plus' : n.sentiment < 0 ? 'minus' : ''} ${Math.abs(n.sentiment)} out of 5, event risk ${n.event_risk}. ${n.hypothesis}`; }
+  function briefingLocal() { const t = state.ta, p = state.plan, v = state.verdict, c = state.ctx; if (!t) return 'I could not load the chart data from Binance. Check the internet connection and I will try again in a minute.';
+    const momWord = t.mom.score >= 2 ? 'strong' : t.mom.score > 0 ? 'mildly positive' : t.mom.score <= -2 ? 'weak' : t.mom.score < 0 ? 'soft' : 'flat'; const trgWord = t.trg.score > 0 ? 'a small buy trigger' : t.trg.score < 0 ? 'a sell signal' : 'no entry trigger';
+    return `Bitcoin is at ${fmt0(state.price || t.d15.price)}${c ? `, ${c.ret7 >= 0 ? 'up' : 'down'} ${Math.abs(c.ret7).toFixed(1)} percent on the week and ${c.ret30 >= 0 ? 'up' : 'down'} ${Math.abs(c.ret30).toFixed(1)} on the month` : ''}. The daily trend is ${t.reg.label}, 4-hour momentum is ${momWord}, and the 15-minute chart shows ${trgWord}. The desk verdict is ${v.action.toLowerCase()}. ${v.reasons[0] || ''} ${p.rr != null ? `The plan at market risks ${p.stopPct.toFixed(1)} percent for a reward to risk of ${p.rr.toFixed(1)}.` : ''}`; }
+  function localBrain(q) { const s = q.toLowerCase(); const t = state.ta, p = state.plan, v = state.verdict;
+    if (/chart/.test(s)) { const m = s.match(/15|1 ?h|4 ?h|hour|dai|1 ?d/); const map = { '15': '15m', '1h': '1h', '1 h': '1h', 'hour': '1h', '4h': '4h', '4 h': '4h', 'dai': '1d', '1d': '1d', '1 d': '1d' }; openStage('chart'); setTf(m ? map[m[0]] : state.tf); return `Here is the ${state.tf} chart with the stop and target lines.`; }
+    if (/news/.test(s)) { openStage('news'); return newsLine(); }
+    if (/journal|performance|stats|how am i/.test(s)) { openStage('journal'); const st = Engine.stats(journal); return st.n ? `${st.n} closed trades, ${st.open} open. Win rate ${st.winRate.toFixed(0)} percent, average ${st.avgR.toFixed(2)} R, total ${st.total >= 0 ? 'plus' : 'minus'} ${fmt(Math.abs(st.total))} dollars.` : `${st.open} open and nothing closed yet.`; }
+    if (/trade|should|buy|sell|setup|plan|entry|stop|target/.test(s)) { if (!t) return 'No chart data yet.'; openStage('trade'); return `Verdict: ${v.action}. ${v.reasons[0] || ''} At market: entry ${fmt0(p.entry)}, stop ${fmt0(p.stop)}, ${p.stopPct.toFixed(1)} percent below; target ${p.target ? fmt0(p.target.p) : 'none'}; position ${fmt(p.notional)} dollars, losing ${fmt(p.lossAtStop)} at the stop; reward to risk ${p.rr == null ? 'not available' : p.rr.toFixed(1)}. Without my thinking service I can't weigh the news, so treat this as numbers only.`; }
+    openStage('market'); return briefingLocal(); }
+
+  // ---- conversation ----
+  // a few things are handled on the spot, without a call: sleep, closing the stage, "I'm back" while already awake
+  function quickCommand(raw) { const t = norm(raw).replace(/[.!?,]/g, '').trim();
+    if (SLEEP_RE.test(t) && t.split(' ').length <= 6) return goSleep('asked').then(() => '');
+    if (/^(?:please )?(?:close|hide|dismiss)(?: (?:it|that|this|the (?:chart|panel|screen|window|stage)|panel|chart|screen))?(?: please)?$|^(?:back to (?:you|full screen)|full screen|go back)$/.test(t)) { closeStage(); return Promise.resolve(pick(['Okay.', 'Sure.', 'Yep.'])); }
+    const w = matchWake([t]); if (w && w.rest.split(' ').filter(Boolean).length < 2) return Promise.resolve(`Mm-hmm, I'm right here${callName() ? ', ' + callName() : ''}.`);
+    if (/^(?:stop|quiet|shut up|enough|never ?mind)$/.test(t)) return Promise.resolve('');
+    return null; }
+  // a new message while Gull is still talking cuts her off; while she is still thinking it waits its turn
+  let replying = false, current = Promise.resolve();
+  async function send(text, { hidden = false } = {}) { text = (text || '').trim(); if (!text) return;
+    if (busy) { if (!replying) { toast('Still working on the last question…'); return; } stopSpeaking(); await current; if (busy) return; }
+    if (mode === 'asleep') { mode = 'awake'; Eye.wake(); }
+    busy = true; lastActivity = Date.now(); stopSpeaking(); Ears.pause(); if (!hidden) { addLine('you', text); setHeard(text); } Eye.setState('thinking'); setSub('…', 'thinking');
+    current = (async () => {
+      try { const quick = hidden ? null : quickCommand(text); const reply = quick ? await quick : await brain(text); replying = true; await say(reply); }
+      catch (e) { replying = true; await say('Something went wrong. ' + e.message); }
+      finally { busy = false; replying = false; lastActivity = Date.now(); if (Eye.state === 'thinking') Eye.setState(mode === 'asleep' ? 'asleep' : 'idle'); Ears.resume();
+        if (sleepAfterReply) { sleepAfterReply = false; closeStage(); mode = 'asleep'; Eye.sleep(); Eye.setState('asleep'); setTimeout(showSleepHint, 1500); } } })();
+    return current; }
+
+  // ---- sign in / sign out / boot ----
+  let booted = false;
+  function bootDesk() { if (booted) return; booted = true; Eye.init($('#eye')); initChart(); renderAll(); connectWS(); refreshData(); refreshFng();
+    setInterval(refreshData, 60000); setInterval(refreshFng, 30 * 60000); setInterval(() => { if (state.news) renderNews(); }, 60000);
+    bget('/api/v3/ticker/24hr?symbol=BTCUSDT').then(t => { if (!wsOk) setPrice(+t.lastPrice, +t.openPrice); }).catch(() => {}); }
+  async function loadRemote() { const d = await remote.load(); if (!d) return; let changed = false;
+    if (Array.isArray(d.journal)) { journal = d.journal; store.set(ukey('journal'), journal); changed = true; } else if (journal.length) remote.save('journal', journal);
+    if (d.news && d.news.scannedAt) { if (!state.news || d.news.scannedAt > state.news.scannedAt) { state.news = d.news; store.set('gull.news', state.news); changed = true; } } else if (state.news) remote.save('news', state.news);
+    if (d.settings && typeof d.settings === 'object') { Object.assign(S, d.settings); store.set(ukey('settings'), S); setMuteUI(); changed = true; } else remote.save('settings', S);
+    if (changed) renderAll(); }
+  function startListening() { if (S.micOn && Ears.supported) Ears.start(); updateMicUI(); }
+  function enterApp(activated) { $('#login').hidden = true; $('#app').hidden = false; mode = 'asleep'; Eye.setState('asleep'); loadUserLocal(); bootDesk(); renderAll(); loadRemote(); showSleepHint();
+    if (S.voiceEngine === 'natural') Natural.load();
+    const hasGesture = activated || (navigator.userActivation ? navigator.userActivation.hasBeenActive : false);
+    if (hasGesture) startListening(); else $('#gate').hidden = false; }
+  $('#gate').onclick = () => { $('#gate').hidden = true; unlockAudio(); startListening(); };
+  function showLogin(msg) { $('#app').hidden = true; $('#login').hidden = false; $('#lErr').textContent = msg || ''; const s = store.get('gull.lastUser', ''); if (s && !$('#lUser').value) $('#lUser').value = s; setTimeout(() => ($('#lUser').value ? $('#lPass') : $('#lUser')).focus(), 50); }
+  function signOut(msg) { session.clear(); journal = []; state.analysis = null; Ears.stop(); stopSpeaking(); mode = 'asleep'; Eye.sleep(); closeStage(); openSettings(false); history = []; lines = []; showLogin(msg); }
+  $('#logoutBtn').onclick = () => signOut('Signed out.');
+  $('#loginForm').onsubmit = async e => { e.preventDefault(); unlockAudio(); const user = $('#lUser').value.trim(), pass = $('#lPass').value, remember = $('#lRemember').checked; const err = $('#lErr'), btn = $('#lBtn');
+    if (!user || !pass) { err.textContent = 'Enter your username and password.'; return; }
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Signing in…'; err.textContent = '';
+    try { const r = await fetch('/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: user, password: pass, remember }), cache: 'no-store' });
+      const j = await r.json().catch(() => null);
+      if (!j) throw new Error(`The sign-in service did not answer (HTTP ${r.status}). Gull has to run on Vercel (or "vercel dev") so the api folder works.`);
+      if (!r.ok) throw new Error(j.error || `Sign-in failed (${r.status}).`);
+      session.set({ token: j.token, exp: j.exp, user: j.user, name: j.name }, remember); store.set('gull.lastUser', j.user); $('#lPass').value = ''; enterApp(true); }
+    catch (ex) { err.textContent = ex.message; const card = $('.login-card'); card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake'); $('#lPass').select(); }
+    finally { btn.disabled = false; btn.textContent = 'Sign in'; } };
+
+  if (session.get()) { enterApp(false); api('/api/login').catch(() => {}); } else showLogin();
+})();
+</script>
+</body>
+</html>

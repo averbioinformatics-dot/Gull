@@ -1,0 +1,8 @@
+{
+  "name": "gull",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Gull: a voice second-brain for a BTC/USDT spot desk. Static page + two Vercel functions + Supabase.",
+  "type": "module",
+  "engines": { "node": ">=18" }
+}

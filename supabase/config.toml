@@ -1,0 +1,3 @@
+# Supabase CLI / GitHub integration settings. Gull only needs the migrations in supabase/migrations;
+# everything else uses the CLI defaults.
+project_id = "gull"

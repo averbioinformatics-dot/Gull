@@ -16,12 +16,14 @@ export default async function handler(req, res) {
   const dbKey = k => PER_USER.has(k) ? `${k}:${uid}` : SHARED.has(k) ? k : null;
   const appKey = Object.fromEntries([...PER_USER, ...SHARED].map(k => [dbKey(k), k]));
 
-  const url = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
-  const key = process.env.SUPABASE_SERVICE_KEY || '';
+  // names set by hand, or by the Vercel–Supabase integration
+  const url = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '');
+  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
   res.setHeader('cache-control', 'no-store');
-  if (!url || !key) return res.status(200).json({ ok: false, reason: 'Supabase is not configured (SUPABASE_URL / SUPABASE_SERVICE_KEY).' });
+  if (!url || !key) return res.status(200).json({ ok: false, reason: 'Supabase is not configured (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY).' });
 
-  const headers = { apikey: key, Authorization: 'Bearer ' + key, 'content-type': 'application/json' };
+  // legacy service_role keys are JWTs and also go in Authorization; the newer sb_secret_ keys go in apikey only
+  const headers = { apikey: key, 'content-type': 'application/json', ...(key.startsWith('eyJ') ? { Authorization: 'Bearer ' + key } : {}) };
   const table = url + '/rest/v1/gull_state';
 
   try {
